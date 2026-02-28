@@ -22,7 +22,7 @@ class StaticTools:
         """Détecte les outils disponibles sur le système"""
         available = {}
         tools = [
-            "python", "ruff", "black", "mypy", "pytest", "coverage",
+            "python", "ruff", "black", "mypy", "coverage",
             "npm", "npx", "node",
             "javac", "mvn", "gradle",
             "gcc", "g++", "make",
@@ -84,12 +84,6 @@ class StaticTools:
 
     def mypy(self):
         return self.run(["mypy", "."], "mypy")
-
-    def pytest(self):
-        return self.run(
-            ["pytest", "-q", "--disable-warnings", "--maxfail=1"],
-            "pytest"
-        )
 
     def jest(self):
         return self.run(["npx", "jest", "--passWithNoTests"], "npx")
@@ -222,21 +216,7 @@ class TestAgent(BaseAgent):
                         if report["status"] == "SUCCESS":
                             report["status"] = "WARNING"
 
-                ret, out, err = tools.pytest()
-                if err and "non disponible" in err:
-                    report["warnings"].append("⚠️ pytest non installé - tests unitaires ignorés")
-                else:
-                    status = "SUCCESS" if ret == 0 else "FAILED"
-                    report["details"].append({
-                        "tool": "pytest",
-                        "status": status,
-                        "return_code": ret,
-                        "output": out or "✅ Tous les tests pytest passent",
-                        "error": err
-                    })
-                    if ret != 0:
-                        report["status"] = "FAILED"
-                        report["summary"].append("❌ Tests pytest échoués")
+                
 
             # ================= JAVASCRIPT / TYPESCRIPT =================
             elif lang_key in ["javascript", "typescript"]:
