@@ -1,195 +1,208 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Set
-import ast
-import re
-import hashlib
+from dataclasses import dataclass
+from typing import List, Dict, Any, Tuple
+import json
+import pickle
+import os
 
-from .graphrag_store import GraphRAGStore, Chunk
+import networkx as nx
+import numpy as np
 
+# ⭐ Supprimer les warnings HuggingFace / transformers avant tout import
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-# -------------------- Filtres d'ingest --------------------
+_ROOT      = Path(__file__).parent.parent
+_GRAPHRAG  = _ROOT / "graphrag"
 
-EXCLUDED_DIR_TOKENS = {
-    "__pycache__",
-    ".git",
-    ".venv",
-    "venv",
-    "node_modules",
-    "test_results",
-    "graphrag",   # évite d'indexer les artefacts d'index eux-mêmes
-}
-
-EXCLUDED_FILE_NAMES = {
-    "base_agent.py",
-    "merge_agent.py",
-    "langgraph_orchestrator.py",
-    "workflow_graph.py",
-    "workflow_nodes.py",
-    "workflow_state.py",
-}
-
-EXCLUDED_EXTENSIONS = {
-    ".pyc", ".xlsx", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".log"
-}
+GRAPH_FILE = _GRAPHRAG / "graph.gpickle"
+FAISS_FILE = _GRAPHRAG / "faiss.index"
+META_FILE  = _GRAPHRAG / "meta.json"
 
 
-def should_index_file(file: Path) -> bool:
-    """Détermine si un fichier doit être indexé."""
-    try:
-        parts = set(file.parts)
-        if any(tok in parts for tok in EXCLUDED_DIR_TOKENS):
-            return False
-
-        if file.name.lower() in EXCLUDED_FILE_NAMES:
-            return False
-
-        if file.suffix.lower() in EXCLUDED_EXTENSIONS:
-            return False
-
-        return True
-    except Exception:
-        return False
+@dataclass
+class Chunk:
+    id:     str
+    text:   str
+    source: str
 
 
-# -------------------- Chunking / symbols --------------------
-
-def chunk_text(text: str, max_chars: int = 1200, overlap: int = 150) -> List[str]:
-    chunks = []
-    i = 0
-    step = max_chars - overlap
-    if step <= 0:
-        step = max_chars
-
-    while i < len(text):
-        chunks.append(text[i:i + max_chars])
-        i += step
-    return chunks
+# ⭐ Cache global — l'embedder est partagé entre toutes les instances
+# Évite de recharger all-MiniLM-L6-v2 à chaque GraphRAGStore()
+_EMBEDDER_CACHE: Dict[str, Any] = {}
 
 
-def stable_id(s: str) -> str:
-    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:16]
-
-
-def extract_symbols_python(code: str) -> Set[str]:
-    """Classes, fonctions, imports via AST."""
-    symbols: Set[str] = set()
-    try:
-        tree = ast.parse(code)
-    except Exception:
-        return symbols
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            symbols.add(node.name)
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            symbols.add(node.name)
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                symbols.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                symbols.add(node.module.split(".")[0])
-            for alias in node.names:
-                symbols.add(alias.name)
-    return symbols
-
-
-def extract_mentions_symbols(text: str) -> Set[str]:
-    """Heuristique: CamelCase + identifiants snake_case."""
-    camel = set(re.findall(r"\b[A-Z][a-zA-Z0-9_]{2,}\b", text))
-    snake = set(re.findall(r"\b[a-z_][a-z0-9_]{2,}\b", text))
-    bad = {"return", "import", "from", "class", "def", "self", "True", "False", "None"}
-    return {t for t in (camel | snake) if t not in bad and 2 < len(t) <= 60}
-
-
-# -------------------- Ingest principal --------------------
-
-def ingest(paths: List[str], patterns=("**/*.py", "**/*.md", "**/*.txt", "**/*.jsonl")):
+class GraphRAGStore:
     """
-    Construit l'index GraphRAG à partir des chemins donnés.
-
-    Conseillé pour ton cas:
-        ingest(["knowledge"])
+    Stockage GraphRAG :
+    - Graphe NetworkX → graphrag/graph.gpickle
+    - Index FAISS     → graphrag/faiss.index
+    - Métadonnées     → graphrag/meta.json
     """
-    store = GraphRAGStore()
-    all_chunks: List[Chunk] = []
 
-    indexed_files = 0
-    skipped_files = 0
+    MODEL_NAME = "all-MiniLM-L6-v2"
 
-    for base in paths:
-        base_path = Path(base)
-        if not base_path.exists():
-            print(f"⚠️ Chemin introuvable, ignoré: {base}")
-            continue
+    def __init__(self):
+        self.g:     nx.DiGraph = nx.DiGraph()
+        self.index: Any        = None
+        self.meta:  List[Dict] = []
+        self._dim:  int        = 384
 
-        for pat in patterns:
-            for file in base_path.glob(pat):
-                if not file.is_file():
-                    continue
+    # ──────────────────────────────────────────
+    # Embeddings
+    # ──────────────────────────────────────────
 
-                # ✅ filtre d'ingest
-                if not should_index_file(file):
-                    skipped_files += 1
-                    continue
+    def _get_embedder(self):
+        """
+        Charge SentenceTransformer une seule fois par processus.
+        Le cache global évite tout rechargement entre instances ou appels.
+        """
+        if self.MODEL_NAME not in _EMBEDDER_CACHE:
+            try:
+                import logging
+                logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+                logging.getLogger("transformers").setLevel(logging.ERROR)
+                logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
-                try:
-                    text = file.read_text(encoding="utf-8", errors="ignore")
-                except Exception:
-                    skipped_files += 1
-                    continue
+                from sentence_transformers import SentenceTransformer
+                model = SentenceTransformer(self.MODEL_NAME, local_files_only=False)
+                _EMBEDDER_CACHE[self.MODEL_NAME] = model
+                self._dim = model.get_sentence_embedding_dimension()
+                print(f"   🤖 Embedder chargé : {self.MODEL_NAME} (dim={self._dim})")
 
-                if not text or not text.strip():
-                    skipped_files += 1
-                    continue
+            except ImportError:
+                raise ImportError(
+                    "sentence-transformers requis : pip install sentence-transformers"
+                )
 
-                indexed_files += 1
+        return _EMBEDDER_CACHE[self.MODEL_NAME]
 
-                file_posix = file.as_posix()
-                file_node = f"file:{file_posix}"
-                store.g.add_node(file_node, type="file", path=file_posix)
+    def _embed(self, texts: List[str]) -> np.ndarray:
+        embedder = self._get_embedder()
+        vecs = embedder.encode(
+            texts,
+            show_progress_bar=False,
+            normalize_embeddings=True,
+            batch_size=32,
+        )
+        return np.array(vecs, dtype="float32")
 
-                # Symbols defined/imported in this file
-                symbols = set()
-                if file.suffix.lower() == ".py":
-                    symbols |= extract_symbols_python(text)
+    # ──────────────────────────────────────────
+    # Construction de l'index vectoriel
+    # ──────────────────────────────────────────
 
-                for sym in symbols:
-                    sym_node = f"symbol:{sym}"
-                    store.g.add_node(sym_node, type="symbol", name=sym)
-                    store.g.add_edge(sym_node, file_node, rel="defined_in")
+    def build_vectors(self, chunks: List[Chunk]) -> None:
+        """Construit l'index FAISS depuis une liste de Chunk."""
+        if not chunks:
+            print("⚠️  Aucun chunk à indexer")
+            return
 
-                # Chunk nodes + mention edges
-                for part in chunk_text(text):
-                    if not part.strip():
-                        continue
+        try:
+            import faiss
+        except ImportError:
+            raise ImportError("faiss requis : pip install faiss-cpu")
 
-                    cid = stable_id(file_posix + ":" + part[:250])
-                    chunk_node = f"chunk:{cid}"
+        texts      = [c.text for c in chunks]
+        vecs       = self._embed(texts)
+        self._dim  = vecs.shape[1]
 
-                    all_chunks.append(Chunk(id=cid, text=part, source=file_posix))
+        # IndexFlatIP = produit scalaire sur vecteurs normalisés = cosine similarity
+        self.index = faiss.IndexFlatIP(self._dim)
+        self.index.add(vecs)
 
-                    store.g.add_node(chunk_node, type="chunk", id=cid, source=file_posix)
-                    store.g.add_edge(chunk_node, file_node, rel="in_file")
+        self.meta = [
+            {"id": c.id, "text": c.text, "source": c.source}
+            for c in chunks
+        ]
 
-                    # Mentions -> symbols
-                    mentions = extract_mentions_symbols(part)
-                    for m in mentions:
-                        m_node = f"symbol:{m}"
-                        store.g.add_node(m_node, type="symbol", name=m)
-                        store.g.add_edge(chunk_node, m_node, rel="mentions")
+        print(f"   🔢 Index FAISS : {self.index.ntotal} vecteurs (dim={self._dim})")
 
-    store.build_vectors(all_chunks)
-    store.save()
+    # ──────────────────────────────────────────
+    # Recherche vectorielle
+    # ──────────────────────────────────────────
 
-    print(f"✅ GraphRAG indexed {len(all_chunks)} chunks from {indexed_files} files. Saved to graphrag/")
-    print(f"ℹ️  Skipped files: {skipped_files}")
+    def vector_search(self, query: str, k: int = 8) -> List[Tuple[Dict, float]]:
+        """Retourne les k chunks les plus proches de la query."""
+        if self.index is None or self.index.ntotal == 0:
+            return []
 
+        q_vec           = self._embed([query])
+        k_eff           = min(k, self.index.ntotal)
+        scores, indices = self.index.search(q_vec, k_eff)
 
-if __name__ == "__main__":
-    # ✅ Pour ton usage RAG de patterns/exemples:
-    ingest(["knowledge"])
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            if 0 <= idx < len(self.meta):
+                results.append((self.meta[idx], float(score)))
+        return results
 
-    # ❌ Ancien (polluant):
-    # ingest(["knowledge", "core", "agents"])
+    # ──────────────────────────────────────────
+    # Sauvegarde
+    # ──────────────────────────────────────────
+
+    def save(self) -> None:
+        """Sauvegarde dans graphrag/graph.gpickle, faiss.index, meta.json."""
+        _GRAPHRAG.mkdir(parents=True, exist_ok=True)
+
+        # Graphe NetworkX
+        with open(GRAPH_FILE, "wb") as f:
+            pickle.dump(self.g, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # Index FAISS
+        if self.index is not None:
+            try:
+                import faiss
+                faiss.write_index(self.index, str(FAISS_FILE))
+            except Exception as e:
+                print(f"⚠️  Sauvegarde FAISS échouée : {e}")
+
+        # Métadonnées JSON
+        with open(META_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.meta, f, ensure_ascii=False, indent=2)
+
+        print(f"   💾 Sauvegardé → {GRAPH_FILE.name}, {FAISS_FILE.name}, {META_FILE.name}")
+
+    # ──────────────────────────────────────────
+    # Chargement
+    # ──────────────────────────────────────────
+
+    def load(self) -> None:
+        """Charge depuis graphrag/graph.gpickle, faiss.index, meta.json."""
+        missing = [str(f) for f in (GRAPH_FILE, FAISS_FILE, META_FILE) if not f.exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"Fichiers GraphRAG manquants : {missing}\n"
+                f"Lance d'abord : python core/graphrag_ingest.py"
+            )
+
+        # Graphe NetworkX
+        with open(GRAPH_FILE, "rb") as f:
+            self.g = pickle.load(f)
+
+        # Index FAISS
+        try:
+            import faiss
+            self.index = faiss.read_index(str(FAISS_FILE))
+            self._dim  = self.index.d
+        except Exception as e:
+            raise RuntimeError(f"Chargement FAISS échoué : {e}")
+
+        # Métadonnées
+        with open(META_FILE, "r", encoding="utf-8") as f:
+            self.meta = json.load(f)
+
+        print(
+            f"✅ GraphRAG chargé : "
+            f"{self.g.number_of_nodes()} nœuds, "
+            f"{self.index.ntotal} vecteurs, "
+            f"{len(self.meta)} chunks"
+        )
+
+    @classmethod
+    def load_existing(cls) -> "GraphRAGStore":
+        """Factory : charge un store existant depuis graphrag/."""
+        store = cls()
+        store.load()
+        return store

@@ -20,7 +20,7 @@ from .workflow_graph import compile_graph
 
 # ⭐ Import RAG — non bloquant si absent
 try:
-    from graphrag.graphrag_retriever import GraphRAGRetriever
+    from .graphrag_retriever import GraphRAGRetriever
     _RAG_AVAILABLE = True
 except ImportError:
     _RAG_AVAILABLE = False

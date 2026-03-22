@@ -4,7 +4,7 @@ class TemperatureExperimentReport:
     """
     Génère des rapports sur l'impact de la température.
     """
-    
+
     @staticmethod
     def generate_report(experiment_results):
         """Génère un rapport détaillé"""
@@ -56,8 +56,17 @@ class TemperatureExperimentReport:
                 "optimal_temperature": optimal_temp,
                 "performance_by_temperature": metrics_list
             })
-        
+
+            
+            def calculate_readability(code: str) -> float:
+                lines = code.splitlines()
+                if not lines:
+                    return 0.0
+
+                avg_len = sum(len(l) for l in lines) / len(lines)
+                return round(100 / (1 + avg_len), 2)
         return report
+    
     
     @staticmethod
     def _find_optimal_temperature(metrics_list):
