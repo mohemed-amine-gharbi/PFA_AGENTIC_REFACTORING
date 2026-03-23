@@ -1,0 +1,23 @@
+# Outils d'analyse statique pour TestAgent
+
+# Pour Python
+ruff>=0.1.0
+black>=23.0.0
+mypy>=1.0.0
+pylint>=3.0.0
+pytest>=7.0.0
+
+# Pour JavaScript/TypeScript
+# npm install -g eslint typescript
+
+# Pour Java
+# sudo apt install default-jdk  # ou équivalent
+
+# Pour C/C++
+# sudo apt install gcc g++  # ou équivalent
+
+# Pour Go
+# https://go.dev/dl/
+
+# Pour Ruby
+# sudo apt install ruby  # ou équivalent

@@ -1,0 +1,447 @@
+[
+  {
+    "id": "adcd2162050c6c84",
+    "text": "# C Complexity Reduction Patterns\n\n## Goal\nReduce cyclomatic/cognitive complexity in C code without changing behavior.\n\n## Common Smells\n- Deeply nested `if/else`\n- Long conditional chains\n- Functions mixing validation + parsing + processing + I/O\n- Repeated conditional logic\n- Excessive nested loops\n- Large `switch` blocks with duplicated branches\n\n## Safe Complexity Reduction Patterns\n\n### 1. Guard Clauses (Early Return)\nReplace nesting with early exits when semantics are preserved.\n\n#### Before\n```c\nif (user != NULL) {\n    if (user->is_active) {\n        process(user);\n    }\n}\nif (user == NULL) return;\nif (!user->is_active) return;\nprocess(user);\n\n### 3. Split Large Functions by Responsibility\nSplit into:\n- validation\n- parsing\n- computation\n- output / persistence\n\n### 4. Simplify Loop Bodies\n- use `continue` for guard checks\n- extract heavy loop logic into helper functions\n\n### 5. Replace Duplicated Branch Logic with Shared Helper\nOnly if side effects and execution order remain identical.\n\n## Semantic Preservation Constraints\n- do not change return values\n- do not change side effects or their order\n- do not change pointer mutation timing\n- do not change memory ownership semantic",
+    "source": "knowledge/c/complexity_patterns.md"
+  },
+  {
+    "id": "ada7c670032b878f",
+    "text": "not change return values\n- do not change side effects or their order\n- do not change pointer mutation timing\n- do not change memory ownership semantics\n- do not change error codes / errno behavior\n- do not change public function signatures unless explicitly requested\n\n## C-Specific Sensitive Cases\n- NULL checks and dereference order\n- pointer aliasing\n- buffer sizes and bounds\n- signed/unsigned behavior\n- integer overflow/underflow behavior\n- `malloc/free` ownership and lifetime\n- `goto cleanup` error handling patterns\n- macro side effects (evaluate arguments carefully)\n\n## Expected Agent Output\n- list detected complexity smells\n- propose a targeted refactor\n- explain why semantics are preserved",
+    "source": "knowledge/c/complexity_patterns.md"
+  },
+  {
+    "id": "d98cf080c00c1f6e",
+    "text": "# C Duplication Refactoring Patterns\n\n## Goal\nReduce duplicated C code safely without introducing unnecessary abstraction.\n\n## Common Duplication in C\n- repeated input validation\n- repeated error handling / cleanup\n- repeated struct initialization\n- repeated loops over arrays\n- repeated parsing logic\n- repeated logging / error messages\n\n## Safe Patterns\n\n### 1. Extract Static Helper Function\nFactor repeated logic into a `static` helper when:\n- inputs/outputs are explicit\n- side effects are clear\n- memory ownership remains unchanged\n\n### 2. Consolidate Repeated Cleanup\nCentralize cleanup using:\n- helper function\n- or a controlled `goto cleanup` pattern\n\n### 3. Reuse Validation Functions\nExamples:\n- `validate_input(...)`\n- `validate_config(...)`\n\n### 4. Shared Initialization Functions\nFor repeated initialization of structs:\n- `init_request(...)`\n- `reset_buffer(...)`\n\n### 5. Extract Repeated Constants/Messages\nMove repeated literals to constants/macros only if it improves clarity.\n\n## Anti-Patterns\n- over-generalizing with complex macros\n- introducing function pointers just to remove a few lines\n- merging blocks that look similar but differ in resource ownership or side effects\n\n## S",
+    "source": "knowledge/c/duplication_patterns.md"
+  },
+  {
+    "id": "158a6b9d356fcf31",
+    "text": "s\n- introducing function pointers just to remove a few lines\n- merging blocks that look similar but differ in resource ownership or side effects\n\n## Safety Checks Before Refactoring\n- same return code?\n- same errno / error state?\n- same memory allocation/free behavior?\n- same execution order?\n- same pointer writes?",
+    "source": "knowledge/c/duplication_patterns.md"
+  },
+  {
+    "id": "8d78840c4de9f566",
+    "text": "# C Include Cleanup Patterns\n\n## Goal\nClean C includes safely.\n\n## Typical Tasks\n- remove unused `#include`\n- remove duplicate includes\n- keep required standard/library/project headers\n- preserve include order conventions if the project has one\n\n## Safe Rules\n- do not remove headers required transitively only if the file directly depends on macros/types from them\n- be careful with platform-specific headers\n- preserve include guards behavior (in headers)\n- do not change macro definitions while cleaning includes\n\n## C-Specific Cases\n\n### 1. Type Definitions\nA header may be required for:\n- `size_t`\n- `uint32_t`\n- `FILE`\n- `bool`\n- struct declarations\n- enums / typedefs\n\n### 2. Macros and Inline Functions\nAn include may look unused but provides:\n- macros\n- static inline helpers\n- compile-time constants\n\n### 3. Conditional Compilation\nHeaders inside `#ifdef` / `#if` blocks may be necessary on some platforms.\n\n## Style (Project-Dependent)\nCommon style:\n1. local header (`\"module.h\"`)\n2. project headers\n3. standard library headers (`<stdio.h>`, `<stdlib.h>`, ...)\n4. third-party headers\n\n## Expected Agent Output\n- list unused/duplicate includes\n- return full code with cleaned includes\n- pre",
+    "source": "knowledge/c/import_patterns.md"
+  },
+  {
+    "id": "3ba03240a91d79e4",
+    "text": "`, `<stdlib.h>`, ...)\n4. third-party headers\n\n## Expected Agent Output\n- list unused/duplicate includes\n- return full code with cleaned includes\n- preserve functionality and portability assumptions",
+    "source": "knowledge/c/import_patterns.md"
+  },
+  {
+    "id": "3bf4da08fe70c342",
+    "text": "# C Long Function Refactoring Patterns\n\n## Goal\nSplit overly long C functions into smaller readable/testable helpers.\n\n## Smells\n- function > 30–60 lines (heuristic)\n- validation + parsing + business logic + I/O in one function\n- too many temporary variables\n- deeply nested loops/conditionals\n- repeated cleanup/error paths\n\n## Safe Patterns\n\n### 1. Split by Responsibility\nCommon split:\n- `validate_input(...)`\n- `parse_request(...)`\n- `compute_result(...)`\n- `write_output(...)`\n- `cleanup_resources(...)`\n\n### 2. Extract Large Conditional Blocks\nIf an `if` branch is long, extract to a helper with explicit parameters.\n\n### 3. Extract Loop Body Processing\nKeep loop skeleton in parent function; move heavy work to helper.\n\n```c\nfor (size_t i = 0; i < count; ++i) {\n    process_item(&items[i], ctx);\n}\n4. Standardize Error Handling\n\nIf many error exits exist, use one cleanup path (goto cleanup) only if already idiomatic in the project.\n\nC Precautions\n\npreserve resource cleanup order\n\npreserve allocation/free ownership\n\npreserve return codes and errno behavior\n\npreserve pointer aliasing assumptions\n\npreserve global/static state mutations\n\ndo not hide important side effects in macros\n\nHeurist",
+    "source": "knowledge/c/long_function_patterns.md"
+  },
+  {
+    "id": "e200a9caf3179e8a",
+    "text": "d errno behavior\n\npreserve pointer aliasing assumptions\n\npreserve global/static state mutations\n\ndo not hide important side effects in macros\n\nHeuristic\n\nExtract only when clarity improves and ownership/side-effects remain obvious.",
+    "source": "knowledge/c/long_function_patterns.md"
+  },
+  {
+    "id": "fd6183265f79094a",
+    "text": "# C Rename Patterns (Safe Renaming)\n\n## Goal\nImprove readability through safe renaming in C code.\n\n## Safe Targets (Priority)\n- local variables (`x`, `tmp`, `res`, `buf`)\n- loop counters when ambiguous (`i`, `j`) in complex loops\n- private/static helper function names\n- unclear parameters in internal functions\n\n## Sensitive Targets (Avoid Without Strong Context)\n- public API function names\n- struct fields used across many modules\n- macro names used externally\n- symbols referenced in linker scripts/build scripts\n- callback names tied to frameworks/libraries\n\n## C Naming Best Practices\n- functions/variables: `snake_case`\n- macros/constants: `UPPER_SNAKE_CASE`\n- booleans: `is_valid`, `has_error`, `should_retry`\n- pointers may use suffixes/prefixes only if project style uses them (`out_buf`, `input_ptr`)\n\n## Examples\n- `x` -> `item_count`\n- `tmp` -> `temp_buffer`\n- `res` -> `status_code`\n- `p` -> `user_ptr`\n- `n` -> `buffer_length`\n\n## Safety Rules\n- do not rename public API symbols unless explicitly requested\n- preserve semantics and storage duration meaning\n- keep consistency with project naming conventions\n- avoid renaming macros unless usage is fully controlled\n\n## Expected Agent O",
+    "source": "knowledge/c/rename_patterns.md"
+  },
+  {
+    "id": "7d4712936b8ce4cf",
+    "text": "rage duration meaning\n- keep consistency with project naming conventions\n- avoid renaming macros unless usage is fully controlled\n\n## Expected Agent Output\n- identify unclear names and explain why they reduce readability\n- propose safer, meaningful renamings\n- avoid renaming public/external symbols unless explicitly requested\n- return full refactored code with naming consistency",
+    "source": "knowledge/c/rename_patterns.md"
+  },
+  {
+    "id": "114d9b4d9beccf1b",
+    "text": "# Java Complexity Reduction Patterns\n\n## Goal\nReduce cyclomatic/cognitive complexity in Java code without changing behavior.\n\n## Common Smells\n- Deeply nested `if/else`\n- Long conditional chains\n- Methods mixing validation + transformation + I/O\n- Repeated conditional logic\n- Excessive nested loops\n- Large `try/catch` blocks mixed with business logic\n\n## Safe Complexity Reduction Patterns\n\n### 1. Guard Clauses (Early Return)\nReplace nesting with early exits when semantics are preserved.\n\n#### Before\n```java\nif (user != null) {\n    if (user.isActive()) {\n        process(user);\n    }\n}\n#### After\n```java\nif (user == null) return;\nif (!user.isActive()) return;\nprocess(user);\n\nprivate boolean isEligible(User user) {\n    return user != null && user.isActive() && !user.isBlocked();\n}",
+    "source": "knowledge/java/complexity_patterns.md"
+  },
+  {
+    "id": "23cbfa0921fee4fb",
+    "text": "# Java Duplication Refactoring Patterns\n\n## Goal\nReduce duplicated Java code without over-abstraction.\n\n## Common Duplication in Java\n- repeated validation blocks across methods\n- repeated DTO <-> Entity mapping\n- repeated `try/catch` blocks\n- repeated object construction\n- repeated filtering/formatting loops\n- repeated repository/service calls with minor variations\n\n## Safe Patterns\n\n### 1. Extract Private Method\nFactor repeated blocks into a private method if:\n- inputs/outputs are clear\n- no hidden implicit dependencies\n\n### 2. Local Template (No Over-Engineering)\nIf two methods share the same structure with small variations:\n- extract common flow\n- pass variation via parameter/helper method\n\n### 3. Centralize Validation\nCreate methods like:\n- `validateProduct(...)`\n- `validateRequest(...)`\n\n### 4. Mapping Utilities (If Duplication Is Real)\nExamples:\n- `toDto(entity)`\n- `updateEntityFromDto(dto, entity)`\n\nBe careful:\n- do not break JPA/framework annotations\n- do not move logic that depends on transaction/session context\n\n### 5. Extract Repeated Messages to Constants\nCentralize repeated strings/error messages.\n\n## Anti-Patterns\n- creating a complex class hierarchy to remove a few ",
+    "source": "knowledge/java/duplication_patterns.md"
+  },
+  {
+    "id": "8b798d0a1788f765",
+    "text": "act Repeated Messages to Constants\nCentralize repeated strings/error messages.\n\n## Anti-Patterns\n- creating a complex class hierarchy to remove a few lines\n- introducing reflection/generics unnecessarily\n- merging code that looks similar but is not semantically identical\n\n## Safety Checks Before Refactoring\n- same exceptions?\n- same side effects?\n- same execution order?\n- same transaction/session context assumptions?",
+    "source": "knowledge/java/duplication_patterns.md"
+  },
+  {
+    "id": "260704708821fa04",
+    "text": "# Java Import Cleanup Patterns\n\n## Goal\nClean Java imports safely.\n\n## Typical Tasks\n- remove unused imports\n- remove duplicate imports\n- organize imports (based on project style)\n- avoid wildcard imports if project conventions forbid them\n\n## Safe Rules\n- do not remove imports used indirectly by annotations/references\n- be careful with name conflicts (`Date`, `List`, etc.)\n- preserve static imports when used (`import static ...`)\n- do not introduce wildcard imports unless explicitly allowed\n\n## Java-Specific Cases\n\n### 1. Annotations\nSome annotations may look “invisible” but are critical:\n- `@Transactional`\n- `@Entity`\n- `@Autowired`\n- `@JsonProperty`\n- etc.\n\n### 2. Inner/Nested Classes\nAn import may be required for a nested type reference.\n\n### 3. Lombok\nLombok imports (`@Data`, `@Builder`, etc.) can be essential.\n\n### 4. Static Imports\nDo not remove without verifying usage:\n```java\nimport static java.util.Objects.requireNonNull;",
+    "source": "knowledge/java/import_patterns.md"
+  },
+  {
+    "id": "4d3aee97359842b3",
+    "text": "# Java Long Function Refactoring Patterns\n\n## Goal\nSplit overly long methods into smaller, readable, testable methods.\n\n## Smells\n- method longer than ~30–50 lines (heuristic)\n- validation + transformation + DB + logging + notification in one method\n- too many temporary variables\n- repeated conditional blocks\n- comments like \"Step 1 / Step 2 / Step 3\" (often signals extractable methods)\n\n## Safe Patterns\n\n### 1. Split by Responsibility\nCommon sequence:\n- `validateRequest(...)`\n- `loadEntity(...)`\n- `applyBusinessRules(...)`\n- `saveEntity(...)`\n- `buildResponse(...)`\n\n### 2. Extract Long Conditional Blocks\nIf an `if` block is large, extract it to a dedicated method.\n\n### 3. Reduce Loop Body Length\nExtract item processing:\n```java\nfor (Order order : orders) {\n    processOrder(order);\n}",
+    "source": "knowledge/java/long_function_patterns.md"
+  },
+  {
+    "id": "949aab6532cbccf2",
+    "text": "# Java Rename Patterns (Safe Renaming)\n\n## Goal\nImprove readability through safe renaming (local variables, parameters, private methods).\n\n## Safe Targets (Priority)\n- local variables (`x`, `tmp`, `res`)\n- unclear internal parameters\n- ambiguous loop variables\n- private methods with vague names\n\n## Sensitive Targets (Avoid Without Strong Context)\n- public methods (API contract)\n- fields exposed via frameworks/serialization\n- names used by reflection\n- JPA/Hibernate names with implicit mapping assumptions\n- JSON/XML mapped names without explicit annotations\n\n## Java Naming Best Practices\n- classes: `PascalCase`\n- methods/variables: `camelCase`\n- constants: `UPPER_SNAKE_CASE`\n- booleans: `isActive`, `hasAccess`, `canEdit`, `shouldRetry`\n\n## Examples\n- `x` -> `userCount`\n- `tmp` -> `formattedMessage`\n- `res` -> `validationResult`\n- `l` -> `lineItems`\n- `f` -> `inputFile`\n\n## Safety Rules\n- do not change the meaning of names\n- avoid mass renaming without clear benefit\n- keep consistency with existing file/project conventions\n- preserve public signatures unless explicitly requested",
+    "source": "knowledge/java/rename_patterns.md"
+  },
+  {
+    "id": "dc59a7cb0927482a",
+    "text": "blic signatures unless explicitly requested",
+    "source": "knowledge/java/rename_patterns.md"
+  },
+  {
+    "id": "d2c74f484bc5ba0a",
+    "text": "# JavaScript Complexity Reduction Patterns\n\n## Goal\nReduce cyclomatic/cognitive complexity in JavaScript code without changing behavior.\n\n## Common Smells\n- Deeply nested `if/else`\n- Long conditional chains\n- Functions mixing validation + transformation + I/O\n- Repeated conditional logic\n- Excessive nested loops\n- Large `try/catch` blocks mixed with business logic\n- Callback pyramids / deeply nested async code\n\n## Safe Complexity Reduction Patterns\n\n### 1. Guard Clauses (Early Return)\nReplace nesting with early exits when semantics are preserved.\n\n#### Before\n```javascript\nif (user) {\n  if (user.isActive) {\n    processUser(user);\n  }\n}\nAfter\nif (!user) return;\nif (!user.isActive) return;\nprocessUser(user);\n### 2. Extract Complex Conditions into Helper Functions\n\nImproves readability while preserving logic\nfunction isEligible(user) {\n  return user && user.isActive && !user.isBlocked;\n}\n### 3. Split Large Functions by Responsibility\nSplit into:\n- validation\n- parsing / normalization\n- computation\n- persistence / API calls\n- presentation formatting\n\n### 4. Simplify Loop Bodies\n- use `continue` for guard checks\n- extract heavy loop logic into helper functions\n- prefer clear iteration o",
+    "source": "knowledge/javascript/complexity_patterns.md"
+  },
+  {
+    "id": "9b8b2f4e9b133d66",
+    "text": " formatting\n\n### 4. Simplify Loop Bodies\n- use `continue` for guard checks\n- extract heavy loop logic into helper functions\n- prefer clear iteration over nested branching\n\n### 5. Replace Duplicated Branch Logic with Shared Helper\nOnly if side effects and execution order remain identical.\n\n### 6. Flatten Async Control Flow\n- prefer `async/await` over deeply nested `.then()`\n- separate error handling from core logic when possible\n- preserve `await` order and side effects\n\n## Semantic Preservation Constraints\n- do not change return values\n- do not change side effects or their order\n- do not change sync vs async behavior\n- do not change thrown errors / error propagation\n- do not change public function signatures unless explicitly requested\n- preserve mutation timing and object reference behavior\n\n## JavaScript-Specific Sensitive Cases\n- truthy/falsy behavior\n- optional chaining / nullish coalescing semantics\n- async/await timing and promise resolution order\n- object/array mutation by reference\n- `this` binding\n- closure capture behavior\n- short-circuit evaluation side effects\n- loose vs strict equality (`==` vs `===`)\n\n## Expected Agent Output\n- list detected complexity smells\n- propos",
+    "source": "knowledge/javascript/complexity_patterns.md"
+  },
+  {
+    "id": "51d5b8fb24e0380b",
+    "text": " short-circuit evaluation side effects\n- loose vs strict equality (`==` vs `===`)\n\n## Expected Agent Output\n- list detected complexity smells\n- propose a targeted refactor\n- explain why semantics are preserved",
+    "source": "knowledge/javascript/complexity_patterns.md"
+  },
+  {
+    "id": "3f34f195d92e227b",
+    "text": "# JavaScript Duplication Refactoring Patterns\n\n## Goal\nReduce duplicated JavaScript code safely while preserving behavior.\n\n## Common Duplication\n- repeated validation checks\n- repeated object mapping / formatting\n- repeated API response handling\n- repeated try/catch + logging blocks\n- repeated array transformations\n- repeated DOM update logic\n\n## Safe Patterns\n\n### 1. Extract Helper Functions\nCreate small pure helpers for repeated logic when possible.\n\n### 2. Reuse Validation Utilities\nExamples:\n- `validateUser(user)`\n- `validatePayload(payload)`\n\n### 3. Consolidate Response Formatting\nCentralize repeated object shaping / DTO mapping.\n\n### 4. Shared Error Handling (Carefully)\nExtract repeated error logging/formatting only if error propagation remains the same.\n\n### 5. Reuse Configuration Objects\nExtract repeated options/constants (timeouts, headers, flags) when stable.\n\n## Anti-Patterns\n- over-abstracting tiny differences\n- creating generic helpers that reduce readability\n- merging blocks with different side effects\n- hiding control flow in utility functions unnecessarily\n\n## Safety Checks Before Refactoring\n- same return values?\n- same thrown errors?\n- same async behavior (`await",
+    "source": "knowledge/javascript/duplication_patterns.md"
+  },
+  {
+    "id": "03a772188f1b80f5",
+    "text": "flow in utility functions unnecessarily\n\n## Safety Checks Before Refactoring\n- same return values?\n- same thrown errors?\n- same async behavior (`await` order)?\n- same object mutation behavior?\n- same logging and side effects?",
+    "source": "knowledge/javascript/duplication_patterns.md"
+  },
+  {
+    "id": "074bc08ddb0c249e",
+    "text": "# JavaScript Import Cleanup Patterns\n\n## Goal\nClean JavaScript imports safely.\n\n## Typical Tasks\n- remove unused imports\n- remove duplicate imports\n- normalize import grouping/order (if project style requires it)\n- keep side-effect imports that are required\n\n## Safe Rules\n- do not remove side-effect imports (e.g. `import \"./setup\";`) unless confirmed unused\n- preserve runtime-required imports even if statically hard to detect\n- preserve import order if side effects depend on order\n- do not rewrite module format (ESM/CommonJS) unless explicitly requested\n\n## JavaScript-Specific Cases\n\n### 1. Side-Effect Imports\nThese may appear unused but are required:\n- polyfills\n- global setup\n- CSS imports in frontend apps\n- monkey patches / instrumentation\n\n### 2. Named vs Default Imports\nBe careful when changing syntax:\n- `import x from \"m\"`\n- `import { x } from \"m\"`\n\n### 3. Type-Only Imports (TS projects nearby)\nIn mixed JS/TS repos, avoid assumptions when files interact.\n\n## Style (Project-Dependent)\nCommon grouping:\n1. built-in / platform modules\n2. third-party packages\n3. internal absolute imports\n4. relative imports\n\n## Expected Agent Output\n- list unused/duplicate imports\n- return full co",
+    "source": "knowledge/javascript/import_patterns.md"
+  },
+  {
+    "id": "2ce51275c51bc56a",
+    "text": "es\n2. third-party packages\n3. internal absolute imports\n4. relative imports\n\n## Expected Agent Output\n- list unused/duplicate imports\n- return full code with cleaned imports\n- preserve functionality and side effects",
+    "source": "knowledge/javascript/import_patterns.md"
+  },
+  {
+    "id": "7071105c9bdc6805",
+    "text": "# JavaScript Long Function Refactoring Patterns\n\n## Goal\nSplit overly long JavaScript functions into smaller, readable, testable helpers.\n\n## Smells\n- function > 30–60 lines (heuristic)\n- validation + transformation + persistence + UI updates in one function\n- too many temporary variables\n- deeply nested conditionals\n- repeated try/catch or error handling\n- mixed sync and async concerns in one block\n\n## Safe Patterns\n\n### 1. Split by Responsibility\nCommon split:\n- `validateInput(...)`\n- `normalizeInput(...)`\n- `computeResult(...)`\n- `saveResult(...)`\n- `formatResponse(...)`\n\n### 2. Extract Large Conditional Blocks\nIf a branch is long, extract it to a helper with explicit inputs.\n\n### 3. Extract Loop Body Processing\nKeep iteration in parent function, move heavy logic to helper.\n\n```javascript\nfor (const item of items) {\n  processItem(item, context);\n}\n### 4. Isolate Error Handling\nExtract repetitive error formatting/logging, but preserve throw/return behavior.\n\n### 5. Separate Async Steps Clearly\nBreak large async functions into small awaited steps while preserving order.\n\n## JavaScript Precautions\n- preserve `await` order\n- preserve thrown errors and rejected promises\n- preserve ob",
+    "source": "knowledge/javascript/long_function_patterns.md"
+  },
+  {
+    "id": "019bed1d31629935",
+    "text": "awaited steps while preserving order.\n\n## JavaScript Precautions\n- preserve `await` order\n- preserve thrown errors and rejected promises\n- preserve object mutation/reference behavior\n- preserve `this` context where relevant\n- preserve event handler side effects and timing\n\n## Heuristic\nExtract only when readability improves and side effects remain obvious.\n",
+    "source": "knowledge/javascript/long_function_patterns.md"
+  },
+  {
+    "id": "b7ad13cc83a6a30d",
+    "text": "# JavaScript Rename Patterns (Safe Renaming)\n\n## Goal\nImprove readability through safe renaming in JavaScript code.\n\n## Safe Targets (Priority)\n- local variables (`x`, `tmp`, `res`, `data`)\n- loop variables when ambiguous\n- internal/private helper function names\n- unclear parameters in internal functions\n- callback parameters (`e`, `d`, `r`) when context is unclear\n\n## Sensitive Targets (Avoid Without Strong Context)\n- exported/public API names\n- object keys used externally (API/contracts)\n- framework lifecycle method names\n- event names / route names\n- global variables used across files\n- destructured property names tied to external payloads\n\n## JavaScript Naming Best Practices\n- variables/functions: `camelCase`\n- constants: `UPPER_SNAKE_CASE` (project-dependent)\n- booleans: `isValid`, `hasError`, `shouldRetry`\n- collections: plural names (`users`, `items`)\n- callbacks: semantic names (`onSuccess`, `handleSubmit`)\n\n## Examples\n- `x` -> `itemCount`\n- `tmp` -> `temporaryBuffer`\n- `res` -> `apiResponse`\n- `d` -> `userData`\n- `arr` -> `filteredItems`\n\n## Safety Rules\n- do not rename public/exported symbols unless explicitly requested\n- do not rename object keys that are part of API pa",
+    "source": "knowledge/javascript/rename_patterns.md"
+  },
+  {
+    "id": "1c48a41a13cb7330",
+    "text": "ilteredItems`\n\n## Safety Rules\n- do not rename public/exported symbols unless explicitly requested\n- do not rename object keys that are part of API payloads/contracts\n- preserve semantics and scope\n- keep naming consistent with project conventions\n\n## Expected Agent Output\n- identify unclear names and explain why\n- propose safer, meaningful renamings\n- avoid renaming public/external symbols unless requested\n- return full refactored code with naming consistency",
+    "source": "knowledge/javascript/rename_patterns.md"
+  },
+  {
+    "id": "6f4eddbf404561ab",
+    "text": "# Python Complexity Refactoring Patterns\n\n## Goal\nReduce cyclomatic/cognitive complexity while preserving exact behavior.\n\n## Core Principles\n- Preserve semantics exactly (outputs, exceptions, side effects, order of execution)\n- Prefer small safe refactors over aggressive rewrites\n- Improve readability and maintainability\n- Keep public APIs unchanged unless explicitly requested\n\n## Common Complexity Smells\n- Deeply nested `if/elif/else`\n- Long functions mixing multiple responsibilities\n- Repeated conditional branches\n- Complex boolean expressions\n- Nested loops with multiple responsibilities\n- Implicit control flow (flags, break/continue scattered everywhere)\n- Duplicate control-flow patterns\n\n## Refactoring Patterns\n\n### 1. Guard Clauses / Early Return\n**Use when**\n- Function has nested validations or preconditions\n\n**Before**\n- `if ...: if ...: if ...: main logic`\n\n**After**\n- Return early for invalid conditions, keep main path flat\n\n**Benefits**\n- Reduces nesting\n- Improves readability\n\n**Safety Notes**\n- Keep same return values and exception behavior\n- Do not change evaluation order of side effects\n\n---\n\n### 2. Extract Helper Function\n**Use when**\n- A block of code performs a d",
+    "source": "knowledge/python/complexity_patterns.md"
+  },
+  {
+    "id": "bf63c73d6a7b91c2",
+    "text": "d exception behavior\n- Do not change evaluation order of side effects\n\n---\n\n### 2. Extract Helper Function\n**Use when**\n- A block of code performs a distinct sub-task\n- Repeated logic appears in multiple places\n\n**Benefits**\n- Smaller functions\n- Better testability\n- Easier reasoning\n\n**Safety Notes**\n- Preserve parameters and data dependencies\n- Do not accidentally capture mutable shared state differently\n\n---\n\n### 3. Split Function by Responsibility\n**Use when**\n- One function validates, transforms, persists, logs, and formats result all at once\n\n**Approach**\n- Separate validation / transformation / persistence / formatting helpers\n\n**Safety Notes**\n- Preserve execution order (especially DB writes, logs, API calls)\n- Preserve raised exceptions and messages if relied upon\n\n---\n\n### 4. Simplify Boolean Logic\n**Use when**\n- Complex boolean expressions are hard to read\n- Repeated negations, chained conditions, nested booleans\n\n**Approach**\n- Extract named predicates:\n  - `is_valid_user(...)`\n  - `has_access(...)`\n\n**Safety Notes**\n- Preserve short-circuit semantics\n- Preserve laziness if condition includes function calls with side effects\n\n---\n\n### 5. Replace Repeated Branch Bodies w",
+    "source": "knowledge/python/complexity_patterns.md"
+  },
+  {
+    "id": "04721a8dcabd5ec4",
+    "text": "serve short-circuit semantics\n- Preserve laziness if condition includes function calls with side effects\n\n---\n\n### 5. Replace Repeated Branch Bodies with Dispatch (Carefully)\n**Use when**\n- Many `if/elif` branches map simple keys to handlers or values\n\n**Approach**\n- Use dictionary mapping or handler functions\n\n**Safety Notes**\n- Only if branch order does not change behavior\n- Be careful with fallbacks/default behavior and exceptions\n\n---\n\n### 6. Flatten Nested Loops by Extracting Inner Logic\n**Use when**\n- Nested loops contain dense conditional logic\n\n**Approach**\n- Extract inner operation into helper\n- Use clear variable names\n- Optionally continue early for skipped cases\n\n**Safety Notes**\n- Preserve loop order and mutation timing\n- Preserve append/update side effects exactly\n\n---\n\n### 7. Introduce Intermediate Variables with Meaningful Names\n**Use when**\n- A single line contains many chained operations or conditions\n\n**Benefits**\n- Lower cognitive load\n- Easier debugging\n\n**Safety Notes**\n- Avoid changing evaluation timing when functions have side effects\n\n---\n\n### 8. Consolidate Duplicate Conditions\n**Use when**\n- Same condition repeated in multiple branches\n\n**Approach**\n- Com",
+    "source": "knowledge/python/complexity_patterns.md"
+  },
+  {
+    "id": "54fb23ab039c6f0e",
+    "text": "ctions have side effects\n\n---\n\n### 8. Consolidate Duplicate Conditions\n**Use when**\n- Same condition repeated in multiple branches\n\n**Approach**\n- Compute once into a named predicate or normalize branching structure\n\n**Safety Notes**\n- Ensure condition is evaluated same number of times if side effects exist\n\n---\n\n## What NOT to Do (Unless Explicitly Safe)\n- Do not change public function signatures\n- Do not replace loops with comprehensions if side effects / ordering become unclear\n- Do not introduce caching/memoization (behavior/performance semantics may change)\n- Do not silently catch exceptions\n- Do not change logging behavior\n- Do not reorder validations if exceptions differ\n\n## ComplexityAgent Decision Heuristics\n1. Prefer guard clauses first\n2. Then extract helpers for repeated / dense blocks\n3. Then simplify boolean logic\n4. Avoid structural rewrites if uncertain\n5. If risk of semantic drift is high, return minimal refactor",
+    "source": "knowledge/python/complexity_patterns.md"
+  },
+  {
+    "id": "e2a8e14f1bf70b73",
+    "text": "# Python Duplication Refactoring Patterns\n\n## Goal\nReduce duplicated code while preserving behavior exactly.\n\n## Types of Duplication\n- Exact duplicate blocks\n- Near-duplicate blocks (same structure, different literals/fields)\n- Repeated loops with same processing shape\n- Repeated validation/error handling\n- Repeated mapping/formatting logic\n\n## Refactoring Patterns\n\n### 1. Extract Helper Function\n**Use when**\n- Same block appears 2+ times\n\n**Benefits**\n- Single source of truth\n- Easier maintenance\n\n**Safety Notes**\n- Preserve parameter order and default behavior\n- Preserve exceptions and side effects\n\n---\n\n### 2. Parameterize Differences\n**Use when**\n- Blocks differ only by field names, labels, constants\n\n**Approach**\n- Extract helper with parameters\n- Pass field names / callbacks / formatters\n\n**Safety Notes**\n- Keep exact output format\n- Preserve branch-specific behavior if any hidden differences exist\n\n---\n\n### 3. Extract Validation Utility\n**Use when**\n- Same required-field checks repeated across functions\n\n**Safety Notes**\n- Preserve exact error keys/messages if relied upon by callers/tests\n\n---\n\n### 4. Extract Formatter / Serializer\n**Use when**\n- Same dict-building / respon",
+    "source": "knowledge/python/duplication_patterns.md"
+  },
+  {
+    "id": "5c8eeed2ea6fa353",
+    "text": "serve exact error keys/messages if relied upon by callers/tests\n\n---\n\n### 4. Extract Formatter / Serializer\n**Use when**\n- Same dict-building / response formatting repeated\n\n**Safety Notes**\n- Preserve field names and order when important for downstream consumers\n\n---\n\n### 5. Consolidate Repeated Try/Except Structure\n**Use when**\n- Multiple functions repeat parse / convert / fallback logic\n\n**Safety Notes**\n- Preserve exception types caught and fallback return values\n\n---\n\n### 6. Loop Unification (Careful)\n**Use when**\n- Multiple loops iterate similarly over same data shape\n\n**Safety Notes**\n- Preserve mutation timing and append order\n- Do not merge loops if intermediate state matters\n\n## What NOT to Do\n- Do not over-abstract tiny duplicates if readability decreases\n- Do not combine code paths with subtle semantic differences\n- Do not introduce generic helpers that obscure domain intent\n\n## DuplicationAgent Heuristics\n1. Confirm semantic equivalence before deduplicating\n2. Prefer local helper extraction\n3. Keep helper names domain-meaningful\n4. If uncertain, deduplicate only exact matches",
+    "source": "knowledge/python/duplication_patterns.md"
+  },
+  {
+    "id": "ada8732314198334",
+    "text": "ningful\n4. If uncertain, deduplicate only exact matches",
+    "source": "knowledge/python/duplication_patterns.md"
+  },
+  {
+    "id": "63adbf63e2bfff8b",
+    "text": "# Python Import Refactoring Patterns\n\n## Goal\nImprove import hygiene while preserving runtime behavior.\n\n## Common Import Smells\n- Unused imports\n- Duplicate imports\n- Imports inside functions without reason (or with no comment)\n- Wildcard imports (`from x import *`)\n- Inconsistent grouping/order\n- Aliases with unclear names\n- Circular import workarounds used incorrectly\n\n## Refactoring Patterns\n\n### 1. Remove Unused Imports\n**Use when**\n- Imported names are never referenced\n\n**Safety Notes**\n- Watch for imports used for side effects\n- Watch for typing-only imports (`TYPE_CHECKING`)\n- Watch for framework/plugin registration imports\n\n---\n\n### 2. Merge Duplicate Imports\n**Use when**\n- Same module imported multiple times\n\n**Safety Notes**\n- Preserve aliasing if actually used differently\n\n---\n\n### 3. Replace Wildcard Imports with Explicit Imports\n**Use when**\n- Readability / maintainability issue\n\n**Safety Notes**\n- Risky if many symbols implicit; apply only when used names are clear\n\n---\n\n### 4. Group and Order Imports\nTypical order (PEP8 style):\n1. Standard library\n2. Third-party\n3. Local application imports\n\n**Safety Notes**\n- Reordering can affect behavior in rare side-effectful im",
+    "source": "knowledge/python/import_patterns.md"
+  },
+  {
+    "id": "93e968b4174297d1",
+    "text": "8 style):\n1. Standard library\n2. Third-party\n3. Local application imports\n\n**Safety Notes**\n- Reordering can affect behavior in rare side-effectful imports\n- Be conservative if imports trigger initialization\n\n---\n\n### 5. Keep Intentional Local Imports\n**Use when**\n- Imports are inside function for lazy loading / optional dependency / circular import fix\n\n**Rule**\n- Do not move local imports unless clearly safe and requested\n\n## What NOT to Do\n- Do not remove imports used indirectly by decorators/metaclasses/plugins if uncertain\n- Do not reorder imports that may alter side effects\n- Do not force style-only changes if they risk behavior\n\n## ImportAgent Heuristics\n1. Prefer removing clearly unused imports\n2. Keep side-effect imports unless explicit evidence they are safe to remove\n3. Be conservative around optional imports and `try/except ImportError`",
+    "source": "knowledge/python/import_patterns.md"
+  },
+  {
+    "id": "685bf229d394c779",
+    "text": "# Python Long Function Refactoring Patterns\n\n## Goal\nSplit overly long functions into smaller, understandable units while preserving behavior.\n\n## Long Function Smells\n- >20-40 lines with mixed responsibilities\n- Validation + transformation + persistence + formatting in one function\n- Many nested branches\n- Repeated temporary variables across unrelated steps\n- Hard-to-name variables due to overloaded logic\n\n## Refactoring Patterns\n\n### 1. Extract Validation Phase\n- Move input checks into `_validate_*` helper\n- Keep exact exception types/messages\n\n### 2. Extract Transformation Phase\n- Move parsing/normalization into `_normalize_*` helper\n- Preserve conversion rules and fallback behavior\n\n### 3. Extract Persistence / Side-Effect Phase\n- Move DB/file/network actions into `_save_*` / `_execute_*`\n- Preserve ordering relative to logs and mutations\n\n### 4. Extract Formatting / Response Phase\n- Return final dict/object via helper to reduce clutter\n\n### 5. Introduce Orchestrator Function Shape\nKeep public function as:\n1. validate\n2. transform\n3. execute\n4. format result\n\nThis makes code easier to follow while preserving the same API.\n\n## Safety Rules\n- Do not change function signature unle",
+    "source": "knowledge/python/long_function_patterns.md"
+  },
+  {
+    "id": "5942c6e562c10cd0",
+    "text": "\n3. execute\n4. format result\n\nThis makes code easier to follow while preserving the same API.\n\n## Safety Rules\n- Do not change function signature unless requested\n- Preserve order of side effects (DB, logging, notifications)\n- Preserve mutation timing\n- Preserve exceptions and return shape\n- Avoid splitting tiny functions excessively (over-fragmentation)\n\n## LongFunctionAgent Heuristics\n1. Extract only coherent blocks\n2. Keep helper names descriptive\n3. Prefer private helpers (`_name`) for internal refactors\n4. Minimal safe split if uncertainty exists",
+    "source": "knowledge/python/long_function_patterns.md"
+  },
+  {
+    "id": "c25c76d527745366",
+    "text": "# Python Rename Refactoring Patterns\n\n## Goal\nImprove readability by renaming unclear identifiers while preserving behavior and compatibility.\n\n## Naming Rules (Python)\n- Use `snake_case` for variables and functions\n- Use `PascalCase` for classes\n- Use descriptive names over short ambiguous names\n- Boolean variables should read like predicates:\n  - `is_valid`, `has_items`, `can_publish`, `should_retry`\n\n## Common Rename Smells\n- Single-letter names outside tiny loops (`x`, `d`, `n`, `k`)\n- Ambiguous names (`data`, `obj`, `tmp`, `res`)\n- Misleading names (`users` for a single user)\n- Non-domain names where domain concept is clear\n- Inconsistent naming in same scope\n\n## Safe Rename Strategy\n1. Rename local variables first\n2. Rename private helpers next\n3. Rename loop variables only if unclear\n4. Avoid renaming public API names unless explicitly allowed\n5. Avoid renaming framework-required names\n6. Avoid renaming imported symbols if it may break module contracts\n\n## Good Rename Examples\n- `x` -> `items`\n- `n` -> `item_count`\n- `res` -> `response`\n- `d` -> `payload` / `data` (if domain unknown)\n- `ok` -> `is_success` / `is_allowed`\n\n## What NOT to Do\n- Do not rename public methods used",
+    "source": "knowledge/python/rename_patterns.md"
+  },
+  {
+    "id": "9b6862459b978f18",
+    "text": "response`\n- `d` -> `payload` / `data` (if domain unknown)\n- `ok` -> `is_success` / `is_allowed`\n\n## What NOT to Do\n- Do not rename public methods used externally without permission\n- Do not rename magic names (`__init__`, framework hooks)\n- Do not rename variables if the new name is speculative and may be wrong\n- Do not rename if it hurts readability more than it helps\n\n## RenameAgent Heuristics\n- Prefer high-confidence renames only\n- Preserve semantics and references\n- Keep changes minimal and clear\n",
+    "source": "knowledge/python/rename_patterns.md"
+  },
+  {
+    "id": "9b807ec40e38c1fd",
+    "text": "# Project Conventions (PFE Agentic Refactoring) - Shared\n\n## Objectif\nDécrire les conventions de ce projet multi-agents de refactoring afin que les agents produisent des résultats compatibles avec l’architecture existante.\n\n---\n\n## 1. Architecture globale\nLe projet est organisé autour de :\n- plusieurs agents de refactoring spécialisés (Rename, Complexity, Duplication, Import, LongFunction)\n- un orchestrateur (linéaire ou LangGraph)\n- des agents de post-traitement/validation (PatchAgent, TestAgent)\n- une configuration de température par agent (`TemperatureConfig`)\n\nLes agents retournent un format standardisé de résultat.\n\n---\n\n## 2. Contrat de sortie standard des agents\nUn agent doit retourner un dictionnaire avec au minimum :\n- `name`\n- `analysis`\n- `proposal`\n\nOptionnel :\n- `temperature_used`\n- autres métadonnées spécifiques (`warnings`, `metrics`, etc.)\n\n### Exemple minimal\n```python\n{\n    \"name\": \"ComplexityAgent\",\n    \"analysis\": [...],\n    \"proposal\": \"...refactored code...\"\n}",
+    "source": "knowledge/shared/project_conventions.md"
+  },
+  {
+    "id": "fb764b64e1304cef",
+    "text": "# Refactoring General Patterns (Shared)\n\n## Objectif\nFournir des patterns généraux de refactoring utilisables par plusieurs agents.\n\n---\n\n## 1. Small Safe Steps\n- Préférer plusieurs petites modifications sûres à une grosse transformation risquée.\n- Après chaque étape : vérifier la cohérence du code.\n\n### Exemple\n- Rename variable\n- Extract helper function\n- Simplify conditional\n- Re-run tests\n\n---\n\n## 2. Extract Function / Method\n### Quand utiliser\n- Bloc de code long\n- Responsabilité mélangée\n- Logique répétée\n- Noms de variables difficiles à comprendre\n\n### Bonnes pratiques\n- Choisir un nom explicite\n- Passer uniquement les paramètres nécessaires\n- Retourner uniquement les résultats nécessaires\n- Préserver l’ordre des effets de bord\n\n---\n\n## 3. Guard Clauses\n### But\nRéduire l’imbrication inutile (nested if/else) pour améliorer lisibilité/complexité cognitive.\n\n### Bonnes pratiques\n- Vérifier les cas d’erreur / early exit au début\n- Garder le “happy path” visible\n- Ne pas modifier la logique de retour\n\n---\n\n## 4. Replace Magic Numbers / Strings\n### But\nAméliorer la lisibilité via des constantes nommées.\n\n### Attention\n- Ne pas extraire si la valeur est purement locale et évidente\n",
+    "source": "knowledge/shared/refactoring_general_patterns.md"
+  },
+  {
+    "id": "f6e6fe7c3e4c5954",
+    "text": "s / Strings\n### But\nAméliorer la lisibilité via des constantes nommées.\n\n### Attention\n- Ne pas extraire si la valeur est purement locale et évidente\n- Conserver le bon scope (local/module/class)\n\n---\n\n## 5. Consolidate Duplicate Logic\n### But\nFactoriser du code dupliqué dans une fonction/helper commun(e).\n\n### Attention\n- Ne pas sur-abstraire\n- Vérifier que les blocs sont réellement équivalents\n- Préserver les différences de comportement subtiles\n\n---\n\n## 6. Simplify Conditionals (Safe)\n### Exemples\n- Fusionner conditions identiques\n- Supprimer `else` après `return` (si sûr)\n- Extraire sous-condition complexe dans variable booléenne nommée\n\n### Attention\n- Respecter short-circuit\n- Respecter ordre d’évaluation\n- Ne pas déplacer des appels avec effets de bord\n\n---\n\n## 7. Improve Naming (Local & Safe)\n### Cible\n- Variables locales\n- paramètres internes\n- helpers privés\n\n### Bonnes pratiques\n- Noms explicites selon rôle métier/technique\n- Booléens commencent par `is_`, `has_`, `can_`, `should_` (langage/style dépendant)\n- Éviter noms trop courts (`x`, `tmp`, `data`) sauf cas local trivial\n\n### Attention\n- Ne pas renommer API publique sans plan\n- Ne pas casser reflection/serialization",
+    "source": "knowledge/shared/refactoring_general_patterns.md"
+  },
+  {
+    "id": "b44e07c3adc5e620",
+    "text": "op courts (`x`, `tmp`, `data`) sauf cas local trivial\n\n### Attention\n- Ne pas renommer API publique sans plan\n- Ne pas casser reflection/serialization/framework bindings\n\n---\n\n## 8. Imports Cleanup\n### But\n- Supprimer imports inutilisés\n- Dédupliquer\n- Organiser l’ordre des imports (si convention)\n\n### Attention\n- Effets de bord d’import\n- Imports dynamiques\n- Imports seulement utilisés dans type hints / runtime conditionnel\n\n---\n\n## 9. Long Function Decomposition\n### Techniques\n- Extract helpers par responsabilité\n- Isoler validation\n- Isoler transformation de données\n- Isoler I/O\n\n### Attention\n- Préserver variables mutées / closures / state partagé\n- Préserver ordre exact des étapes\n\n---\n\n## 10. Refactoring Output Rules (pour LLM agents)\nQuand un agent propose une modification :\n1. Mentionner brièvement les problèmes détectés\n2. Fournir le code refactoré complet (ou patch clair)\n3. Expliquer pourquoi la sémantique est préservée\n4. Mentionner les limites / risques éventuels\n\n---\n\n## Anti-patterns à éviter\n- “Big rewrite” sans nécessité\n- Changement de style + logique en même temps\n- Optimisations prématurées\n- Abstractions inutiles\n- Renommages massifs non maîtrisés",
+    "source": "knowledge/shared/refactoring_general_patterns.md"
+  },
+  {
+    "id": "22702ecfd835aa2b",
+    "text": "ité\n- Changement de style + logique en même temps\n- Optimisations prématurées\n- Abstractions inutiles\n- Renommages massifs non maîtrisés",
+    "source": "knowledge/shared/refactoring_general_patterns.md"
+  },
+  {
+    "id": "31ff813adbae1fb1",
+    "text": "# Semantic Preservation Rules (Shared)\n\n## Objectif\nToutes les transformations de refactoring doivent préserver le comportement fonctionnel du code.\n\n## Règles obligatoires (tous agents)\n\n### 1. Préservation du comportement\n- Ne pas changer les valeurs de retour.\n- Ne pas changer les effets de bord.\n- Ne pas changer les exceptions levées (type/message/moment si possible).\n- Ne pas changer l’ordre d’exécution des opérations sensibles.\n\n### 2. Préservation des APIs\n- Ne pas modifier les signatures publiques (noms de fonctions, paramètres, ordre des paramètres) sauf demande explicite.\n- Ne pas renommer les classes/fonctions exportées publiquement sans stratégie de migration.\n- Ne pas casser les points d’entrée existants.\n\n### 3. Préservation de la logique conditionnelle\n- Conserver la logique booléenne exacte.\n- Respecter le short-circuit (`and`, `or`).\n- Éviter les simplifications risquées qui changent les cas limites.\n\n### 4. Préservation des mutations / état\n- Ne pas modifier le timing des mutations (append, update, assignment, DB writes, file writes).\n- Ne pas déplacer des effets de bord hors de leur contexte sans preuve de sécurité.\n- Respecter les états globaux / partagés / cach",
+    "source": "knowledge/shared/semantic_preservation_rules.md"
+  },
+  {
+    "id": "eb2c066cdff453a7",
+    "text": "tes, file writes).\n- Ne pas déplacer des effets de bord hors de leur contexte sans preuve de sécurité.\n- Respecter les états globaux / partagés / caches.\n\n### 5. Préservation I/O et environnement\n- Conserver les appels I/O (fichiers, réseau, logs) et leur ordre.\n- Ne pas supprimer des logs fonctionnels sans validation.\n- Ne pas modifier la gestion du temps, hasard, seeds, timestamps.\n\n### 6. Imports et dépendances\n- Ne pas supprimer un import si son import déclenche un effet de bord au chargement.\n- Conserver les imports nécessaires à la compatibilité runtime/type checking.\n\n### 7. Exceptions et erreurs\n- Conserver les `try/except/finally` et leur sémantique.\n- Ne pas transformer silencieusement une exception en comportement différent.\n- Préserver les messages critiques si utilisés par tests/monitoring.\n\n## Règle de sécurité\nSi un refactor peut améliorer la lisibilité mais risque de changer la sémantique :\n- **ne pas l’appliquer**\n- ou proposer le changement avec mention explicite du risque.\n\n## Stratégie de validation recommandée\nAvant d’accepter un refactor :\n1. Vérification syntaxique\n2. Tests unitaires / statiques\n3. Comparaison comportementale sur cas critiques\n4. Review des e",
+    "source": "knowledge/shared/semantic_preservation_rules.md"
+  },
+  {
+    "id": "0ea95615dd8f37ed",
+    "text": "nt d’accepter un refactor :\n1. Vérification syntaxique\n2. Tests unitaires / statiques\n3. Comparaison comportementale sur cas critiques\n4. Review des effets de bord\n\n## Priorité\nLa préservation sémantique est prioritaire sur :\n- style\n- concision\n- “élégance”\n- optimisation micro-performance",
+    "source": "knowledge/shared/semantic_preservation_rules.md"
+  },
+  {
+    "id": "1f96869d71f09c57",
+    "text": "{\"id\":\"c_complexity_001\",\"language\":\"c\",\"agent\":\"ComplexityAgent\",\"before\":\"int calc(User *u, Order *o){ if(u!=NULL){ if(u->is_active){ if(o!=NULL){ if(o->items_count>0){ return o->items_count; } else { return 0; } } else { return 0; } } else { return 0; } } return 0; }\",\"after\":\"int calc(User *user, Order *order){ if (user == NULL) return 0; if (!user->is_active) return 0; if (order == NULL) return 0; if (order->items_count <= 0) return 0; return order->items_count; }\",\"why_safe\":\"Same checks and return values preserved; only nesting reduced with guard clauses.\"}\n{\"id\":\"c_complexity_002\",\"language\":\"c\",\"agent\":\"ComplexityAgent\",\"before\":\"int handle(Request *r){ if(r==NULL){ return ERR_NULL; } if(r->valid){ log_info(\\\"valid\\\"); save_request(r); notify_client(r); return OK; } else { log_warn(\\\"invalid\\\"); return ERR_INVALID; } }\",\"after\":\"int handle(Request *request){ if (request == NULL) return ERR_NULL; if (!request->valid) { log_warn(\\\"invalid\\\"); return ERR_INVALID; } log_info(\\\"valid\\\"); save_request(request); notify_client(request); return OK; }\",\"why_safe\":\"Return codes and side-effect order preserved; valid/invalid branches flattened safely.\"}",
+    "source": "knowledge/c/complexity_examples.jsonl"
+  },
+  {
+    "id": "b7f2959f2c14cd66",
+    "text": "t); return OK; }\",\"why_safe\":\"Return codes and side-effect order preserved; valid/invalid branches flattened safely.\"}",
+    "source": "knowledge/c/complexity_examples.jsonl"
+  },
+  {
+    "id": "765528d6a7e6d3d5",
+    "text": "{\"id\":\"c_dup_001\",\"language\":\"c\",\"agent\":\"DuplicationAgent\",\"before\":\"int create(Product *p){ if(p==NULL) return ERR_NULL; if(p->name==NULL) return ERR_NAME; return repo_save(p);} int update(Product *p){ if(p==NULL) return ERR_NULL; if(p->name==NULL) return ERR_NAME; return repo_update(p);}\",\"after\":\"static int validate_product(Product *p){ if (p == NULL) return ERR_NULL; if (p->name == NULL) return ERR_NAME; return OK; } int create(Product *p){ int status = validate_product(p); if (status != OK) return status; return repo_save(p); } int update(Product *p){ int status = validate_product(p); if (status != OK) return status; return repo_update(p); }\",\"why_safe\":\"Validation logic extracted into shared helper; repository calls unchanged.\"}\n{\"id\":\"c_dup_002\",\"language\":\"c\",\"agent\":\"DuplicationAgent\",\"before\":\"void init_a(Item *it){ it->id=0; it->count=0; it->flag=0; } void init_b(Item *it){ it->id=0; it->count=0; it->flag=0; }\",\"after\":\"static void reset_item(Item *it){ it->id = 0; it->count = 0; it->flag = 0; } void init_a(Item *it){ reset_item(it); } void init_b(Item *it){ reset_item(it); }\",\"why_safe\":\"Repeated struct initialization extracted into one static helper with identical ass",
+    "source": "knowledge/c/duplication_examples.jsonl"
+  },
+  {
+    "id": "87d2c6bd97ed1c57",
+    "text": "t_item(it); } void init_b(Item *it){ reset_item(it); }\",\"why_safe\":\"Repeated struct initialization extracted into one static helper with identical assignments.\"}",
+    "source": "knowledge/c/duplication_examples.jsonl"
+  },
+  {
+    "id": "12c04a55297f71c2",
+    "text": "{\"id\":\"c_include_001\",\"language\":\"c\",\"agent\":\"ImportAgent\",\"before\":\"#include <stdio.h>\\n#include <stdlib.h>\\n#include <string.h>\\nint main(void){ printf(\\\"hi\\\\n\\\"); return 0; }\",\"after\":\"#include <stdio.h>\\nint main(void){ printf(\\\"hi\\\\n\\\"); return 0; }\",\"why_safe\":\"Unused includes stdlib.h and string.h removed; stdio.h kept for printf.\"}\n{\"id\":\"c_include_002\",\"language\":\"c\",\"agent\":\"ImportAgent\",\"before\":\"#include \\\"app.h\\\"\\n#include <stdint.h>\\n#include <stdbool.h>\\n#include <stdbool.h>\\nstatic bool ok = true;\",\"after\":\"#include \\\"app.h\\\"\\n#include <stdbool.h>\\n#include <stdint.h>\\nstatic bool ok = true;\",\"why_safe\":\"Duplicate include removed; required includes preserved and organized.\"}",
+    "source": "knowledge/c/import_examples.jsonl"
+  },
+  {
+    "id": "450584a985164f20",
+    "text": "{\"id\":\"c_long_001\",\"language\":\"c\",\"agent\":\"LongFunctionAgent\",\"before\":\"int process_order(OrderRequest *req){ if(req==NULL) return ERR_NULL; if(req->count==0) return ERR_EMPTY; Customer *c = find_customer(req->customer_id); if(c==NULL) return ERR_CUSTOMER; int total=0; for(size_t i=0;i<req->count;i++){ total += req->items[i].price * req->items[i].qty; } Order o; o.customer=c; o.total=total; if(save_order(&o)!=0) return ERR_SAVE; audit_order_created(o.total); return OK; }\",\"after\":\"static int validate_request(OrderRequest *req){ if (req == NULL) return ERR_NULL; if (req->count == 0) return ERR_EMPTY; return OK; } static int calculate_total(const OrderRequest *req){ int total = 0; for (size_t i = 0; i < req->count; ++i) { total += req->items[i].price * req->items[i].qty; } return total; } int process_order(OrderRequest *req){ int status = validate_request(req); if (status != OK) return status; Customer *customer = find_customer(req->customer_id); if (customer == NULL) return ERR_CUSTOMER; int total = calculate_total(req); Order order; order.customer = customer; order.total = total; if (save_order(&order) != 0) return ERR_SAVE; audit_order_created(order.total); return OK; }\",\"why_safe",
+    "source": "knowledge/c/long_function_examples.jsonl"
+  },
+  {
+    "id": "583d484a71aa0dd1",
+    "text": "rder.customer = customer; order.total = total; if (save_order(&order) != 0) return ERR_SAVE; audit_order_created(order.total); return OK; }\",\"why_safe\":\"Validation, lookup, total computation, save, and audit order preserved; logic split into helpers only.\"}\n",
+    "source": "knowledge/c/long_function_examples.jsonl"
+  },
+  {
+    "id": "c225036a07018c51",
+    "text": "{\"id\":\"c_rename_001\",\"language\":\"c\",\"agent\":\"RenameAgent\",\"before\":\"int f(Item *a, int n){ int x=0; for(int i=0;i<n;i++){ x += a[i].count; } return x; }\",\"after\":\"int f(Item *items, int item_count){ int total_count = 0; for (int index = 0; index < item_count; ++index) { total_count += items[index].count; } return total_count; }\",\"why_safe\":\"Only parameter/local variable names changed for readability; behavior unchanged.\"}\n{\"id\":\"c_rename_002\",\"language\":\"c\",\"agent\":\"RenameAgent\",\"before\":\"static int c(User *u){ return u != NULL && u->is_active && !u->is_blocked; }\",\"after\":\"static int can_user_proceed(User *user){ return user != NULL && user->is_active && !user->is_blocked; }\",\"why_safe\":\"Static helper and parameter renamed only; condition logic unchanged.\"}",
+    "source": "knowledge/c/rename_examples.jsonl"
+  },
+  {
+    "id": "84f1df11c3f94319",
+    "text": "{\"id\":\"java_complexity_001\",\"language\":\"java\",\"agent\":\"ComplexityAgent\",\"before\":\"public int calc(User u, Order o){ if(u!=null){ if(u.isActive()){ if(o!=null){ if(o.getItems()!=null && !o.getItems().isEmpty()){ return o.getItems().size(); } else { return 0; } } else { return 0; } } else { return 0; } } return 0; }\",\"after\":\"public int calc(User user, Order order){ if (user == null) return 0; if (!user.isActive()) return 0; if (order == null) return 0; if (order.getItems() == null || order.getItems().isEmpty()) return 0; return order.getItems().size(); }\",\"why_safe\":\"Same return values and order of checks preserved; only nesting reduced with guard clauses.\"}\n{\"id\":\"java_complexity_002\",\"language\":\"java\",\"agent\":\"ComplexityAgent\",\"before\":\"public void handle(Request r){ if(r==null){ throw new IllegalArgumentException(); } if(r.isValid()){ log.info(\\\"valid\\\"); save(r); notifyClient(r); } else { log.warn(\\\"invalid\\\"); } }\",\"after\":\"public void handle(Request request){ validateRequest(request); if (!request.isValid()) { log.warn(\\\"invalid\\\"); return; } log.info(\\\"valid\\\"); save(request); notifyClient(request); } private void validateRequest(Request request){ if (request == null) { throw",
+    "source": "knowledge/java/complexity_examples.jsonl"
+  },
+  {
+    "id": "67ef93d348b1773b",
+    "text": "\"); return; } log.info(\\\"valid\\\"); save(request); notifyClient(request); } private void validateRequest(Request request){ if (request == null) { throw new IllegalArgumentException(); } }\",\"why_safe\":\"Null validation still occurs first; valid/invalid behavior and side effects preserved.\"}",
+    "source": "knowledge/java/complexity_examples.jsonl"
+  },
+  {
+    "id": "fb70650078156c98",
+    "text": "{\"id\":\"java_dup_001\",\"language\":\"java\",\"agent\":\"DuplicationAgent\",\"before\":\"public void create(Product p){ if(p==null) throw new IllegalArgumentException(\\\"p\\\"); if(p.getName()==null || p.getName().isBlank()) throw new IllegalArgumentException(\\\"name\\\"); repo.save(p);} public void update(Product p){ if(p==null) throw new IllegalArgumentException(\\\"p\\\"); if(p.getName()==null || p.getName().isBlank()) throw new IllegalArgumentException(\\\"name\\\"); repo.update(p);}\",\"after\":\"public void create(Product p){ validateProduct(p); repo.save(p);} public void update(Product p){ validateProduct(p); repo.update(p);} private void validateProduct(Product p){ if (p == null) throw new IllegalArgumentException(\\\"p\\\"); if (p.getName() == null || p.getName().isBlank()) throw new IllegalArgumentException(\\\"name\\\"); }\",\"why_safe\":\"Validation logic is identical and reused; repository calls unchanged.\"}\n{\"id\":\"java_dup_002\",\"language\":\"java\",\"agent\":\"DuplicationAgent\",\"before\":\"ProductDto a(Product p){ ProductDto d=new ProductDto(); d.setId(p.getId()); d.setName(p.getName()); return d;} ProductDto b(Product p){ ProductDto d=new ProductDto(); d.setId(p.getId()); d.setName(p.getName()); return d;}\",\"after\":\"",
+    "source": "knowledge/java/duplication_examples.jsonl"
+  },
+  {
+    "id": "a9cec8faf577d1d4",
+    "text": "ame(p.getName()); return d;} ProductDto b(Product p){ ProductDto d=new ProductDto(); d.setId(p.getId()); d.setName(p.getName()); return d;}\",\"after\":\"ProductDto a(Product p){ return toDto(p);} ProductDto b(Product p){ return toDto(p);} private ProductDto toDto(Product p){ ProductDto d = new ProductDto(); d.setId(p.getId()); d.setName(p.getName()); return d; }\",\"why_safe\":\"Repeated DTO mapping extracted into one helper, same field assignments preserved.\"}\n",
+    "source": "knowledge/java/duplication_examples.jsonl"
+  },
+  {
+    "id": "0f896a606e867d89",
+    "text": "{\"id\":\"java_import_001\",\"language\":\"java\",\"agent\":\"ImportAgent\",\"before\":\"import java.util.List; import java.util.ArrayList; import java.util.Map; public class A { private final List<String> names = new ArrayList<>(); }\",\"after\":\"import java.util.ArrayList; import java.util.List; public class A { private final List<String> names = new ArrayList<>(); }\",\"why_safe\":\"Unused import Map removed; used imports preserved.\"}\n{\"id\":\"java_import_002\",\"language\":\"java\",\"agent\":\"ImportAgent\",\"before\":\"import static java.util.Objects.requireNonNull; import java.util.Objects; public class A { public A(String n){ this.name=requireNonNull(n); } private final String name; }\",\"after\":\"import static java.util.Objects.requireNonNull; public class A { public A(String n){ this.name=requireNonNull(n); } private final String name; }\",\"why_safe\":\"Unused non-static Objects import removed; static import still required and preserved.\"}\n",
+    "source": "knowledge/java/import_examples.jsonl"
+  },
+  {
+    "id": "7e835b430484922a",
+    "text": "{\"id\":\"java_long_001\",\"language\":\"java\",\"agent\":\"LongFunctionAgent\",\"before\":\"public Response process(OrderRequest req){ if(req==null) throw new IllegalArgumentException(); if(req.getItems()==null||req.getItems().isEmpty()) return Response.error(\\\"empty\\\"); Customer c = customerRepo.find(req.getCustomerId()); if(c==null) return Response.error(\\\"customer\\\"); BigDecimal total = BigDecimal.ZERO; for(Item i:req.getItems()){ total = total.add(i.getPrice().multiply(BigDecimal.valueOf(i.getQty()))); } Order o = new Order(); o.setCustomer(c); o.setTotal(total); orderRepo.save(o); audit(\\\"order_created\\\", o.getId()); return Response.ok(o.getId()); }\",\"after\":\"public Response process(OrderRequest req){ validateRequest(req); if (isEmptyRequest(req)) return Response.error(\\\"empty\\\"); Customer customer = loadCustomer(req); if (customer == null) return Response.error(\\\"customer\\\"); BigDecimal total = calculateTotal(req); Order order = buildOrder(customer, total); orderRepo.save(order); audit(\\\"order_created\\\", order.getId()); return Response.ok(order.getId()); } private void validateRequest(OrderRequest req){ if (req == null) throw new IllegalArgumentException(); } private boolean isEmptyRequest",
+    "source": "knowledge/java/long_function_examples.jsonl"
+  },
+  {
+    "id": "77e191cf9cff51ab",
+    "text": "er.getId()); } private void validateRequest(OrderRequest req){ if (req == null) throw new IllegalArgumentException(); } private boolean isEmptyRequest(OrderRequest req){ return req.getItems() == null || req.getItems().isEmpty(); } private Customer loadCustomer(OrderRequest req){ return customerRepo.find(req.getCustomerId()); } private BigDecimal calculateTotal(OrderRequest req){ BigDecimal total = BigDecimal.ZERO; for (Item i : req.getItems()) { total = total.add(i.getPrice().multiply(BigDecimal.valueOf(i.getQty()))); } return total; } private Order buildOrder(Customer customer, BigDecimal total){ Order order = new Order(); order.setCustomer(customer); order.setTotal(total); return order; }\",\"why_safe\":\"Validation, DB lookup, total calculation, save, audit, and response order preserved; logic extracted into helpers only.\"}\n",
+    "source": "knowledge/java/long_function_examples.jsonl"
+  },
+  {
+    "id": "da47266716b2fbc4",
+    "text": "rename_examples.jsonl",
+    "source": "knowledge/java/rename_examples.jsonl"
+  },
+  {
+    "id": "59383dea2ebbd36a",
+    "text": "{\"id\":\"js_complexity_001\",\"language\":\"javascript\",\"agent\":\"ComplexityAgent\",\"before\":\"function process(user){ if(user){ if(user.isActive){ send(user); } } }\",\"after\":\"function process(user){ if (!user) return; if (!user.isActive) return; send(user); }\",\"why_safe\":\"Same conditions and side effects preserved; nesting reduced with guard clauses.\"}\n{\"id\":\"js_complexity_002\",\"language\":\"javascript\",\"agent\":\"ComplexityAgent\",\"before\":\"async function handle(req){ if(req){ if(req.valid){ const data = await load(req.id); return format(data); } } return null; }\",\"after\":\"async function handle(req){ if (!req) return null; if (!req.valid) return null; const data = await load(req.id); return format(data); }\",\"why_safe\":\"Return values and async await order preserved while reducing nesting.\"}",
+    "source": "knowledge/javascript/complexity_examples.jsonl"
+  },
+  {
+    "id": "166eb792cc6041e9",
+    "text": "{\"id\":\"js_dup_001\",\"language\":\"javascript\",\"agent\":\"DuplicationAgent\",\"before\":\"function create(user){ if(!user) throw new Error('missing'); if(!user.name) throw new Error('name'); return repo.create(user);} function update(user){ if(!user) throw new Error('missing'); if(!user.name) throw new Error('name'); return repo.update(user);}\",\"after\":\"function validateUser(user){ if(!user) throw new Error('missing'); if(!user.name) throw new Error('name'); } function create(user){ validateUser(user); return repo.create(user);} function update(user){ validateUser(user); return repo.update(user);}\",\"why_safe\":\"Validation duplicated logic extracted; repository calls unchanged.\"}\n{\"id\":\"js_dup_002\",\"language\":\"javascript\",\"agent\":\"DuplicationAgent\",\"before\":\"const a = items.map(x => ({ id:x.id, name:x.name })); const b = users.map(x => ({ id:x.id, name:x.name }));\",\"after\":\"function pickIdName(x){ return { id: x.id, name: x.name }; } const a = items.map(pickIdName); const b = users.map(pickIdName);\",\"why_safe\":\"Repeated mapping logic extracted into helper; output shape unchanged.\"}",
+    "source": "knowledge/javascript/duplication_examples.jsonl"
+  },
+  {
+    "id": "79df34f3296d3673",
+    "text": "to helper; output shape unchanged.\"}",
+    "source": "knowledge/javascript/duplication_examples.jsonl"
+  },
+  {
+    "id": "a47c1219efd4af28",
+    "text": "{\"id\":\"js_import_001\",\"language\":\"javascript\",\"agent\":\"ImportAgent\",\"before\":\"import fs from 'fs';\\nimport path from 'path';\\nimport os from 'os';\\nconsole.log(path.basename('/tmp/a.txt'));\",\"after\":\"import path from 'path';\\nconsole.log(path.basename('/tmp/a.txt'));\",\"why_safe\":\"Unused imports fs and os removed; path kept for basename.\"}\n{\"id\":\"js_import_002\",\"language\":\"javascript\",\"agent\":\"ImportAgent\",\"before\":\"import './setup';\\nimport { api } from './api';\\nimport { api as api2 } from './api';\\napi();\",\"after\":\"import './setup';\\nimport { api } from './api';\\napi();\",\"why_safe\":\"Duplicate import removed; side-effect import './setup' preserved.\"}",
+    "source": "knowledge/javascript/import_examples.jsonl"
+  },
+  {
+    "id": "fd5dec3826116d7c",
+    "text": "{\"id\":\"js_long_001\",\"language\":\"javascript\",\"agent\":\"LongFunctionAgent\",\"before\":\"async function submitOrder(req){ if(!req) throw new Error('missing'); if(!req.items || req.items.length===0) throw new Error('empty'); const user = await findUser(req.userId); if(!user) throw new Error('user'); let total = 0; for(const item of req.items){ total += item.price * item.qty; } const order = { userId:user.id, total }; await saveOrder(order); await audit('order_created', order); return order; }\",\"after\":\"function validateOrderRequest(req){ if(!req) throw new Error('missing'); if(!req.items || req.items.length===0) throw new Error('empty'); } function computeTotal(items){ let total = 0; for (const item of items) { total += item.price * item.qty; } return total; } async function submitOrder(req){ validateOrderRequest(req); const user = await findUser(req.userId); if(!user) throw new Error('user'); const total = computeTotal(req.items); const order = { userId:user.id, total }; await saveOrder(order); await audit('order_created', order); return order; }\",\"why_safe\":\"Validation, user lookup, total computation, save and audit order preserved; function split into helpers only.\"}\n",
+    "source": "knowledge/javascript/long_function_examples.jsonl"
+  },
+  {
+    "id": "f35083d7f82c8889",
+    "text": "er; }\",\"why_safe\":\"Validation, user lookup, total computation, save and audit order preserved; function split into helpers only.\"}\n",
+    "source": "knowledge/javascript/long_function_examples.jsonl"
+  },
+  {
+    "id": "ec0eeb3741084a7f",
+    "text": "{\"id\":\"js_rename_001\",\"language\":\"javascript\",\"agent\":\"RenameAgent\",\"before\":\"function f(arr){ let x = 0; for (let i = 0; i < arr.length; i++) { x += arr[i].count; } return x; }\",\"after\":\"function f(items){ let totalCount = 0; for (let index = 0; index < items.length; index++) { totalCount += items[index].count; } return totalCount; }\",\"why_safe\":\"Only local/parameter names changed for readability; logic unchanged.\"}\n{\"id\":\"js_rename_002\",\"language\":\"javascript\",\"agent\":\"RenameAgent\",\"before\":\"const h = (d) => d && d.active;\",\"after\":\"const isActiveUser = (userData) => userData && userData.active;\",\"why_safe\":\"Renamed function and parameter for clarity without changing behavior.\"}\n",
+    "source": "knowledge/javascript/rename_examples.jsonl"
+  },
+  {
+    "id": "f7969be847983378",
+    "text": "{\"type\":\"complexity_example\",\"language\":\"python\",\"title\":\"flatten_nested_validation_with_guard_clauses\",\"smell\":\"deep_nesting\",\"before\":\"def process_order(order):\\n    if order is not None:\\n        if order.get('items'):\\n            if order.get('user_id'):\\n                total = sum(item['price'] for item in order['items'])\\n                return {'ok': True, 'total': total}\\n            else:\\n                return {'ok': False, 'error': 'missing_user'}\\n        else:\\n            return {'ok': False, 'error': 'no_items'}\\n    else:\\n        return {'ok': False, 'error': 'no_order'}\",\"after\":\"def process_order(order):\\n    if order is None:\\n        return {'ok': False, 'error': 'no_order'}\\n    if not order.get('items'):\\n        return {'ok': False, 'error': 'no_items'}\\n    if not order.get('user_id'):\\n        return {'ok': False, 'error': 'missing_user'}\\n\\n    total = sum(item['price'] for item in order['items'])\\n    return {'ok': True, 'total': total}\",\"notes\":\"Guard clauses reduce nesting while preserving outputs and branch behavior.\"}\n{\"type\":\"complexity_example\",\"language\":\"python\",\"title\":\"extract_complex_condition_predicate\",\"smell\":\"complex_boolean_logic\",\"bef",
+    "source": "knowledge/python/complexity_examples.jsonl"
+  },
+  {
+    "id": "01f302934c3698d0",
+    "text": "branch behavior.\"}\n{\"type\":\"complexity_example\",\"language\":\"python\",\"title\":\"extract_complex_condition_predicate\",\"smell\":\"complex_boolean_logic\",\"before\":\"def can_publish(user, post):\\n    if user and user.is_active and (user.is_admin or user.role == 'editor') and post and not post.is_archived:\\n        return True\\n    return False\",\"after\":\"def _has_publish_role(user):\\n    return user.is_admin or user.role == 'editor'\\n\\n\\ndef can_publish(user, post):\\n    if not user:\\n        return False\\n    if not user.is_active:\\n        return False\\n    if not _has_publish_role(user):\\n        return False\\n    if not post:\\n        return False\\n    if post.is_archived:\\n        return False\\n    return True\",\"notes\":\"Extract named predicate and flatten conditions to reduce cognitive complexity.\"}\n{\"type\":\"complexity_example\",\"language\":\"python\",\"title\":\"split_function_by_responsibility\",\"smell\":\"long_function_mixed_responsibilities\",\"before\":\"def handle_user(data, db, logger):\\n    if 'email' not in data:\\n        raise ValueError('email required')\\n    email = data['email'].strip().lower()\\n    if '@' not in email:\\n        raise ValueError('invalid email')\\n    user = db.find_user_b",
+    "source": "knowledge/python/complexity_examples.jsonl"
+  },
+  {
+    "id": "9390e1b543344286",
+    "text": " required')\\n    email = data['email'].strip().lower()\\n    if '@' not in email:\\n        raise ValueError('invalid email')\\n    user = db.find_user_by_email(email)\\n    if user is None:\\n        user = db.create_user(email=email)\\n        logger.info(f'created {email}')\\n    else:\\n        logger.info(f'exists {email}')\\n    return {'email': user.email, 'id': user.id}\",\"after\":\"def _validate_and_normalize_email(data):\\n    if 'email' not in data:\\n        raise ValueError('email required')\\n    email = data['email'].strip().lower()\\n    if '@' not in email:\\n        raise ValueError('invalid email')\\n    return email\\n\\n\\ndef _get_or_create_user(email, db, logger):\\n    user = db.find_user_by_email(email)\\n    if user is None:\\n        user = db.create_user(email=email)\\n        logger.info(f'created {email}')\\n        return user\\n    logger.info(f'exists {email}')\\n    return user\\n\\n\\ndef handle_user(data, db, logger):\\n    email = _validate_and_normalize_email(data)\\n    user = _get_or_create_user(email, db, logger)\\n    return {'email': user.email, 'id': user.id}\",\"notes\":\"Separates validation and persistence while preserving logs and DB call order.\"}\n{\"type\":\"complexity_exam",
+    "source": "knowledge/python/complexity_examples.jsonl"
+  },
+  {
+    "id": "2cbed714446305ba",
+    "text": "'email': user.email, 'id': user.id}\",\"notes\":\"Separates validation and persistence while preserving logs and DB call order.\"}\n{\"type\":\"complexity_example\",\"language\":\"python\",\"title\":\"extract_inner_loop_logic\",\"smell\":\"nested_loops_with_conditionals\",\"before\":\"def collect_valid_pairs(users, groups):\\n    result = []\\n    for user in users:\\n        for group in groups:\\n            if not user.get('active'):\\n                continue\\n            if group.get('disabled'):\\n                continue\\n            if user['id'] in group.get('member_ids', []):\\n                result.append((user['id'], group['id']))\\n    return result\",\"after\":\"def _is_valid_membership(user, group):\\n    if not user.get('active'):\\n        return False\\n    if group.get('disabled'):\\n        return False\\n    return user['id'] in group.get('member_ids', [])\\n\\n\\ndef collect_valid_pairs(users, groups):\\n    result = []\\n    for user in users:\\n        for group in groups:\\n            if _is_valid_membership(user, group):\\n                result.append((user['id'], group['id']))\\n    return result\",\"notes\":\"Extracting inner loop predicate reduces complexity and preserves iteration order.\"}\n{\"type\":\"comp",
+    "source": "knowledge/python/complexity_examples.jsonl"
+  },
+  {
+    "id": "d0a3216085c165ff",
+    "text": "er['id'], group['id']))\\n    return result\",\"notes\":\"Extracting inner loop predicate reduces complexity and preserves iteration order.\"}\n{\"type\":\"complexity_example\",\"language\":\"python\",\"title\":\"consolidate_repeated_error_branches\",\"smell\":\"repeated_branch_logic\",\"before\":\"def parse_age(value):\\n    if value is None:\\n        return {'ok': False, 'error': 'invalid_age'}\\n    if value == '':\\n        return {'ok': False, 'error': 'invalid_age'}\\n    try:\\n        age = int(value)\\n    except ValueError:\\n        return {'ok': False, 'error': 'invalid_age'}\\n    if age < 0:\\n        return {'ok': False, 'error': 'invalid_age'}\\n    return {'ok': True, 'age': age}\",\"after\":\"def _invalid_age_result():\\n    return {'ok': False, 'error': 'invalid_age'}\\n\\n\\ndef parse_age(value):\\n    if value is None or value == '':\\n        return _invalid_age_result()\\n    try:\\n        age = int(value)\\n    except ValueError:\\n        return _invalid_age_result()\\n    if age < 0:\\n        return _invalid_age_result()\\n    return {'ok': True, 'age': age}\",\"notes\":\"Reduces duplication and cognitive load without changing error contract.\"}",
+    "source": "knowledge/python/complexity_examples.jsonl"
+  },
+  {
+    "id": "b1153d5f3317dc21",
+    "text": ",\"notes\":\"Reduces duplication and cognitive load without changing error contract.\"}",
+    "source": "knowledge/python/complexity_examples.jsonl"
+  },
+  {
+    "id": "f623b3470e62d641",
+    "text": "{\"type\":\"duplication_example\",\"language\":\"python\",\"title\":\"extract_response_formatter\",\"smell\":\"duplicate_dict_formatting\",\"before\":\"def user_to_dict(user):\\n    return {'id': user.id, 'email': user.email, 'active': user.active}\\n\\n\\ndef admin_to_dict(admin):\\n    return {'id': admin.id, 'email': admin.email, 'active': admin.active}\",\"after\":\"def _account_to_dict(account):\\n    return {'id': account.id, 'email': account.email, 'active': account.active}\\n\\n\\ndef user_to_dict(user):\\n    return _account_to_dict(user)\\n\\n\\ndef admin_to_dict(admin):\\n    return _account_to_dict(admin)\",\"notes\":\"Extract exact duplicate formatting logic into helper.\"}\n{\"type\":\"duplication_example\",\"language\":\"python\",\"title\":\"parameterize_required_field_check\",\"smell\":\"duplicate_validation_blocks\",\"before\":\"def validate_user_payload(data):\\n    if 'email' not in data:\\n        raise ValueError('email required')\\n    if 'name' not in data:\\n        raise ValueError('name required')\\n\\n\\ndef validate_product_payload(data):\\n    if 'sku' not in data:\\n        raise ValueError('sku required')\\n    if 'name' not in data:\\n        raise ValueError('name required')\",\"after\":\"def _require_fields(data, fields):\\n",
+    "source": "knowledge/python/duplication_examples.jsonl"
+  },
+  {
+    "id": "7d0a5f367a2fe022",
+    "text": "raise ValueError('sku required')\\n    if 'name' not in data:\\n        raise ValueError('name required')\",\"after\":\"def _require_fields(data, fields):\\n    for field in fields:\\n        if field not in data:\\n            raise ValueError(f'{field} required')\\n\\n\\ndef validate_user_payload(data):\\n    _require_fields(data, ['email', 'name'])\\n\\n\\ndef validate_product_payload(data):\\n    _require_fields(data, ['sku', 'name'])\",\"notes\":\"Near-duplicate validation extracted into parameterized helper.\"}\n{\"type\":\"duplication_example\",\"language\":\"python\",\"title\":\"extract_parse_int_with_default\",\"smell\":\"duplicate_try_except_conversion\",\"before\":\"def parse_limit(value):\\n    try:\\n        return int(value)\\n    except (TypeError, ValueError):\\n        return 10\\n\\n\\ndef parse_offset(value):\\n    try:\\n        return int(value)\\n    except (TypeError, ValueError):\\n        return 0\",\"after\":\"def _parse_int_or_default(value, default):\\n    try:\\n        return int(value)\\n    except (TypeError, ValueError):\\n        return default\\n\\n\\ndef parse_limit(value):\\n    return _parse_int_or_default(value, 10)\\n\\n\\ndef parse_offset(value):\\n    return _parse_int_or_default(value, 0)\",\"notes\":\"Repeated",
+    "source": "knowledge/python/duplication_examples.jsonl"
+  },
+  {
+    "id": "a784743e217fad45",
+    "text": "imit(value):\\n    return _parse_int_or_default(value, 10)\\n\\n\\ndef parse_offset(value):\\n    return _parse_int_or_default(value, 0)\",\"notes\":\"Repeated conversion logic unified safely with explicit default parameter.\"}\n{\"type\":\"duplication_example\",\"language\":\"python\",\"title\":\"extract_status_logging\",\"smell\":\"duplicate_logging_messages\",\"before\":\"def mark_started(job, logger):\\n    job.status = 'started'\\n    logger.info(f'job {job.id} started')\\n\\n\\ndef mark_finished(job, logger):\\n    job.status = 'finished'\\n    logger.info(f'job {job.id} finished')\",\"after\":\"def _set_status(job, status, logger):\\n    job.status = status\\n    logger.info(f'job {job.id} {status}')\\n\\n\\ndef mark_started(job, logger):\\n    _set_status(job, 'started', logger)\\n\\n\\ndef mark_finished(job, logger):\\n    _set_status(job, 'finished', logger)\",\"notes\":\"Duplicate mutation+logging pattern extracted into helper while preserving log format.\"}",
+    "source": "knowledge/python/duplication_examples.jsonl"
+  },
+  {
+    "id": "4908e9c59ec130fb",
+    "text": "{\"type\":\"import_example\",\"language\":\"python\",\"title\":\"remove_unused_imports\",\"smell\":\"unused_imports\",\"before\":\"import os\\nimport sys\\nimport json\\n\\n\\ndef to_json(data):\\n    return json.dumps(data)\",\"after\":\"import json\\n\\n\\ndef to_json(data):\\n    return json.dumps(data)\",\"notes\":\"Remove clearly unused imports os and sys.\"}\n{\"type\":\"import_example\",\"language\":\"python\",\"title\":\"merge_duplicate_imports\",\"smell\":\"duplicate_imports\",\"before\":\"import json\\nimport os\\nimport json\\n\\n\\ndef cwd_as_json():\\n    return json.dumps({'cwd': os.getcwd()})\",\"after\":\"import json\\nimport os\\n\\n\\ndef cwd_as_json():\\n    return json.dumps({'cwd': os.getcwd()})\",\"notes\":\"Duplicate import removed without changing behavior.\"}\n{\"type\":\"import_example\",\"language\":\"python\",\"title\":\"keep_intentional_local_import\",\"smell\":\"local_import\",\"before\":\"def export_report(data):\\n    import csv\\n    with open('report.csv', 'w', newline='') as f:\\n        writer = csv.writer(f)\\n        writer.writerow(['count'])\\n        writer.writerow([len(data)])\",\"after\":\"def export_report(data):\\n    import csv\\n    with open('report.csv', 'w', newline='') as f:\\n        writer = csv.writer(f)\\n        writer.writerow(['coun",
+    "source": "knowledge/python/import_examples.jsonl"
+  },
+  {
+    "id": "bfe33f7fbd6ef2e9",
+    "text": "port_report(data):\\n    import csv\\n    with open('report.csv', 'w', newline='') as f:\\n        writer = csv.writer(f)\\n        writer.writerow(['count'])\\n        writer.writerow([len(data)])\",\"notes\":\"Local import preserved because moving imports is not necessary and may be intentional.\"}\n{\"type\":\"import_example\",\"language\":\"python\",\"title\":\"avoid_removing_side_effect_import_when_uncertain\",\"smell\":\"possible_side_effect_import\",\"before\":\"import app.plugins\\n\\n\\ndef run():\\n    return 'ok'\",\"after\":\"import app.plugins\\n\\n\\ndef run():\\n    return 'ok'\",\"notes\":\"Do not remove import if it may exist for side effects/plugin registration.\"}",
+    "source": "knowledge/python/import_examples.jsonl"
+  },
+  {
+    "id": "b77dfa1bc6cf068a",
+    "text": "{\"type\":\"long_function_example\",\"language\":\"python\",\"title\":\"split_validation_and_transform\",\"smell\":\"long_function_mixed_stages\",\"before\":\"def create_profile(payload, db):\\n    if 'email' not in payload:\\n        raise ValueError('email required')\\n    if 'name' not in payload:\\n        raise ValueError('name required')\\n    email = payload['email'].strip().lower()\\n    name = payload['name'].strip()\\n    user = db.create_user(email=email, name=name)\\n    return {'id': user.id, 'email': user.email, 'name': user.name}\",\"after\":\"def _validate_profile_payload(payload):\\n    if 'email' not in payload:\\n        raise ValueError('email required')\\n    if 'name' not in payload:\\n        raise ValueError('name required')\\n\\n\\ndef _normalize_profile_payload(payload):\\n    return payload['email'].strip().lower(), payload['name'].strip()\\n\\n\\ndef _profile_response(user):\\n    return {'id': user.id, 'email': user.email, 'name': user.name}\\n\\n\\ndef create_profile(payload, db):\\n    _validate_profile_payload(payload)\\n    email, name = _normalize_profile_payload(payload)\\n    user = db.create_user(email=email, name=name)\\n    return _profile_response(user)\",\"notes\":\"Long function split into val",
+    "source": "knowledge/python/long_function_examples.jsonl"
+  },
+  {
+    "id": "da873fc1aaa7eb90",
+    "text": "profile_payload(payload)\\n    user = db.create_user(email=email, name=name)\\n    return _profile_response(user)\",\"notes\":\"Long function split into validation/normalization/formatting while preserving API.\"}\n{\"type\":\"long_function_example\",\"language\":\"python\",\"title\":\"extract_side_effect_block\",\"smell\":\"long_function_with_logging_and_persistence\",\"before\":\"def submit_order(order, db, logger):\\n    if not order.get('items'):\\n        raise ValueError('items required')\\n    total = sum(item['price'] for item in order['items'])\\n    record = db.save_order(order, total)\\n    logger.info(f'order {record.id} saved')\\n    return {'id': record.id, 'total': total}\",\"after\":\"def _validate_order(order):\\n    if not order.get('items'):\\n        raise ValueError('items required')\\n\\n\\ndef _calculate_total(order):\\n    return sum(item['price'] for item in order['items'])\\n\\n\\ndef _save_order(order, total, db, logger):\\n    record = db.save_order(order, total)\\n    logger.info(f'order {record.id} saved')\\n    return record\\n\\n\\ndef submit_order(order, db, logger):\\n    _validate_order(order)\\n    total = _calculate_total(order)\\n    record = _save_order(order, total, db, logger)\\n    return {'id':",
+    "source": "knowledge/python/long_function_examples.jsonl"
+  },
+  {
+    "id": "83966faf065c75b1",
+    "text": ", db, logger):\\n    _validate_order(order)\\n    total = _calculate_total(order)\\n    record = _save_order(order, total, db, logger)\\n    return {'id': record.id, 'total': total}\",\"notes\":\"Extracts coherent phases and preserves DB/log order.\"}\n{\"type\":\"long_function_example\",\"language\":\"python\",\"title\":\"keep_public_signature_unchanged\",\"smell\":\"long_public_function\",\"before\":\"def sync_users(users, api, logger):\\n    results = []\\n    for user in users:\\n        if not user.get('email'):\\n            logger.warning('missing email')\\n            continue\\n        payload = {'email': user['email'].strip().lower(), 'name': user.get('name', '').strip()}\\n        response = api.push_user(payload)\\n        results.append({'email': payload['email'], 'status': response['status']})\\n    return results\",\"after\":\"def _build_user_payload(user):\\n    return {'email': user['email'].strip().lower(), 'name': user.get('name', '').strip()}\\n\\n\\ndef _result_row(payload, response):\\n    return {'email': payload['email'], 'status': response['status']}\\n\\n\\ndef sync_users(users, api, logger):\\n    results = []\\n    for user in users:\\n        if not user.get('email'):\\n            logger.warning('missing ",
+    "source": "knowledge/python/long_function_examples.jsonl"
+  },
+  {
+    "id": "8ea781ba744c58f0",
+    "text": "def sync_users(users, api, logger):\\n    results = []\\n    for user in users:\\n        if not user.get('email'):\\n            logger.warning('missing email')\\n            continue\\n        payload = _build_user_payload(user)\\n        response = api.push_user(payload)\\n        results.append(_result_row(payload, response))\\n    return results\",\"notes\":\"Function remains public and same signature; helper extraction reduces length/readability burden.\"}\n",
+    "source": "knowledge/python/long_function_examples.jsonl"
+  },
+  {
+    "id": "c9dbdc9147a9e47b",
+    "text": "{\"type\":\"rename_example\",\"language\":\"python\",\"title\":\"rename_ambiguous_locals\",\"smell\":\"unclear_variable_names\",\"before\":\"def count_items(d):\\n    x = d.get('items', [])\\n    n = len(x)\\n    return n\",\"after\":\"def count_items(d):\\n    items = d.get('items', [])\\n    item_count = len(items)\\n    return item_count\",\"notes\":\"Rename ambiguous locals x/n to meaningful names.\"}\n{\"type\":\"rename_example\",\"language\":\"python\",\"title\":\"rename_boolean_variable\",\"smell\":\"unclear_boolean_name\",\"before\":\"def can_run(user):\\n    ok = user is not None and user.active\\n    return ok\",\"after\":\"def can_run(user):\\n    is_allowed = user is not None and user.active\\n    return is_allowed\",\"notes\":\"Boolean variable renamed to predicate-style name.\"}\n{\"type\":\"rename_example\",\"language\":\"python\",\"title\":\"rename_response_variable\",\"smell\":\"generic_temp_name\",\"before\":\"def fetch_profile(client, user_id):\\n    r = client.get(f'/users/{user_id}')\\n    return r.json()\",\"after\":\"def fetch_profile(client, user_id):\\n    response = client.get(f'/users/{user_id}')\\n    return response.json()\",\"notes\":\"Replace one-letter variable with descriptive name in network call context.\"}\n{\"type\":\"rename_example\",\"language\":\"p",
+    "source": "knowledge/python/rename_examples.jsonl"
+  },
+  {
+    "id": "76fe676484e86702",
+    "text": "  return response.json()\",\"notes\":\"Replace one-letter variable with descriptive name in network call context.\"}\n{\"type\":\"rename_example\",\"language\":\"python\",\"title\":\"rename_loop_variable_when_unclear\",\"smell\":\"unclear_loop_identifier\",\"before\":\"def emails(users):\\n    out = []\\n    for u in users:\\n        out.append(u['email'])\\n    return out\",\"after\":\"def emails(users):\\n    email_list = []\\n    for user in users:\\n        email_list.append(user['email'])\\n    return email_list\",\"notes\":\"Rename loop variable and result accumulator for readability.\"}",
+    "source": "knowledge/python/rename_examples.jsonl"
+  }
+]
