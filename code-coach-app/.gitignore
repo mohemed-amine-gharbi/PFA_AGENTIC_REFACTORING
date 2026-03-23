@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env.local
+.env
+dist/
+build/
+out/
+coverage/
+*.log
+__pycache__/
+*.pyc
+rag/chroma_db/
