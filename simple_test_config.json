@@ -1,0 +1,62 @@
+{
+  "description": "Configuration de test simple",
+  "input_directory": "bad_codes",
+  "output_directory": "test_results",
+  "model": "mistral:latest",
+  "test_configurations": [
+    {
+      "id": "T1-Rename-Low",
+      "name": "RenameAgent (Temp 0.1)",
+      "description": "Test conservateur du RenameAgent",
+      "agents": [
+        {
+          "name": "RenameAgent",
+          "temperature": 0.1
+        }
+      ]
+    },
+    {
+      "id": "T2-Rename-Med",
+      "name": "RenameAgent (Temp 0.3)",
+      "description": "Test équilibré du RenameAgent",
+      "agents": [
+        {
+          "name": "RenameAgent",
+          "temperature": 0.3
+        }
+      ]
+    },
+    {
+      "id": "T3-Import",
+      "name": "ImportAgent (Temp 0.3)",
+      "description": "Test de l'ImportAgent",
+      "agents": [
+        {
+          "name": "ImportAgent",
+          "temperature": 0.3
+        }
+      ]
+    },
+    {
+      "id": "T4-Combo",
+      "name": "Rename + Import",
+      "description": "Combinaison de deux agents",
+      "agents": [
+        {
+          "name": "RenameAgent",
+          "temperature": 0.3
+        },
+        {
+          "name": "ImportAgent",
+          "temperature": 0.3
+        }
+      ]
+    }
+  ],
+  "output_options": {
+    "save_refactored_code": true,
+    "save_error_logs": true,
+    "generate_excel_report": true,
+    "generate_json_report": false
+  }
+}
