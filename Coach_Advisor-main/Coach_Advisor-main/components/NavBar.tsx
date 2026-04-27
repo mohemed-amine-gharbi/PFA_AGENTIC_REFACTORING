@@ -70,16 +70,19 @@ export default function NavBar() {
             Coach Advisor
           </Link>
           
-          <Link href="/refactoring" style={{
-            color: pathname === '/refactoring' ? 'var(--accent)' : 'var(--text)',
-            textDecoration: 'none',
-            fontWeight: 500,
-            transition: 'color 0.2s',
-            padding: '8px 0',
-            borderBottom: pathname === '/refactoring' ? `2px solid var(--accent)` : 'none',
-            fontFamily: 'var(--mono)',
-            fontSize: '0.85rem',
-          }}>
+          <Link
+            href="/refactoring"
+            style={{
+              color: pathname === '/refactoring' ? 'var(--accent)' : 'var(--text)',
+              textDecoration: 'none',
+              fontWeight: 500,
+              transition: 'color 0.2s',
+              padding: '8px 0',
+              borderBottom: pathname === '/refactoring' ? '2px solid var(--accent)' : 'none',
+              fontFamily: 'var(--mono)',
+              fontSize: '0.85rem',
+            }}
+          >
             Refactoring Pro
           </Link>
         </div>
