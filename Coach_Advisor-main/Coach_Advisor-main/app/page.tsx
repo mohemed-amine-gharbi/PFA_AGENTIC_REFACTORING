@@ -109,7 +109,7 @@ export default function Home() {
           )}
         </div>
         <footer style={{ marginTop:48, textAlign:'center', fontSize:'0.68rem', color:'var(--text-muted)', letterSpacing:'0.05em' }}>
-          Powered by <span style={{ color:'var(--accent)' }}>Claude claude-sonnet-4</span> · Built for developers
+          Powered by <span style={{ color:'var(--accent)' }}>Gharbi Mohamed Amine -Rouag Dhia -Missaoui Yassine </span> · Built for developers
         </footer>
       </div>
     </div>
