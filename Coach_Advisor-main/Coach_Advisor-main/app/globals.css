@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+:root {
+  --bg:           #07090c;
+  --surface:      #0c1018;
+  --surface2:     #111822;
+  --surface3:     #17202e;
+  --border:       #1c2a3a;
+  --border2:      #243548;
+  --accent:       #f0a500;
+  --accent-dim:   rgba(240,165,0,0.15);
+  --accent-glow:  rgba(240,165,0,0.3);
+  --cyan:         #00d4ff;
+  --cyan-dim:     rgba(0,212,255,0.12);
+  --green:        #00e676;
+  --danger:       #ff4757;
+  --text:         #a8bdd4;
+  --text-muted:   #3d5570;
+  --text-bright:  #ddeeff;
+  --mono:         'Space Mono', monospace;
+  --display:      'Syne', sans-serif;
+  --r:            10px;
+  --r-lg:         16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px);
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(240,165,0,0.06) 0%, transparent 65%),
+    linear-gradient(rgba(28,42,58,0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28,42,58,0.4) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.prose h2 { font-family: var(--display); font-size: 1rem; font-weight: 700; color: var(--accent); margin: 1.4rem 0 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+.prose h3 { font-family: var(--display); font-size: 0.9rem; color: var(--cyan); margin: 1.1rem 0 0.4rem; }
+.prose p { margin-bottom: 0.75rem; line-height: 1.8; }
+.prose ul, .prose ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+.prose li { margin-bottom: 0.35rem; line-height: 1.7; }
+.prose strong { color: var(--text-bright); }
+.prose code { background: var(--surface3); border: 1px solid var(--border2); color: var(--accent); padding: 2px 7px; border-radius: 4px; font-family: var(--mono); font-size: 0.82em; }
+.prose pre { background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 1rem 1.2rem; border-radius: 8px; overflow-x: auto; margin: 0.9rem 0; }
+.prose pre code { background: none; border: none; padding: 0; color: #e8c87a; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
