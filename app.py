@@ -93,7 +93,7 @@ def init_system():
     try:
         from core.ollama_llm_client   import OllamaLLMClient
         from core.langgraph_orchestrator import LangGraphOrchestrator
-        llm = OllamaLLMClient(st.session_state.get("model_name","mistral:latest"))
+        llm = OllamaLLMClient(st.session_state.get("model_name","cm:latest"))
         orc = LangGraphOrchestrator(llm)
         return llm, orc, orc.get_available_agents()
     except Exception as e:
